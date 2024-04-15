@@ -1,0 +1,14 @@
+{
+    "name": "Realsense workvolume",
+    "path_dataset": "/Users/shilem2/OneDrive - Medtronic PLC/projects/rgbd_reconstruction/data/work_volume_data/20240327_091906_sample/",
+    "path_intrinsic": "/Users/shilem2/OneDrive - Medtronic PLC/projects/rgbd_reconstruction/data/work_volume_data/20240327_091906_sample/intrinsic.json",
+    "depth_max": 3.0,
+    "voxel_size": 0.01,
+    "depth_diff_max": 0.07,
+    "preference_loop_closure_odometry": 0.1,
+    "preference_loop_closure_registration": 5.0,
+    "tsdf_cubic_size": 3.0,
+    "icp_method": "color",
+    "global_registration": "ransac",
+    "python_multi_threading": false
+}

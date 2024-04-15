@@ -141,7 +141,7 @@ def make_pointcloud_for_fragment(path_dataset, color_files, depth_files,
                     config["template_fragment_pointcloud"] % fragment_id)
     o3d.io.write_point_cloud(pcd_name,
                              pcd,
-                             format='auto',
+                             # format='auto',
                              write_ascii=False,
                              compressed=True)
 

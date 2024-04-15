@@ -131,7 +131,7 @@ def draw_correspondences(img_s, img_t, pts_s, pts_t, mask, title):
     new_img[:hb, wa:wa + wb] = img_t
 
     fig = plt.figure()
-    fig.canvas.set_window_title(title)
+    # fig.canvas.set_window_title(title)
     for i in range(pts_s.shape[0]):
         if mask[i]:
             sx = pts_s[i, 0]
