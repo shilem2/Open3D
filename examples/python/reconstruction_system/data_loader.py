@@ -75,3 +75,27 @@ def jackjack_data_loader():
     config['python_multi_threading'] = True
 
     return config
+
+
+def IQ_data_loader():
+    print('Loading RealSense L515 IQ work volume Bag Dataset')
+
+    # Get the dataset.
+    # jackjack_bag = o3d.data.JackJackL515Bag()
+
+    # Set dataset specific parameters.
+    config = {}
+    config['path_dataset'] = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec_sample/'
+    config['path_intrinsic'] = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec_sample/intrinsic_00.json'
+    config['depth_max'] = 3.
+    config['voxel_size'] = 0.01
+    config['depth_diff_max'] = 0.03
+    config['preference_loop_closure_odometry'] = 0.1
+    config['preference_loop_closure_registration'] = 5.0
+    config['tsdf_cubic_size'] = 0.75
+    config['icp_method'] = "color"
+    config['global_registration'] = "ransac"
+    config['python_multi_threading'] = False
+    config['n_keyframes_per_n_frame'] = 1
+
+    return config
