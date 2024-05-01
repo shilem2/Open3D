@@ -58,8 +58,7 @@ def pose_estimation(source_rgbd_image, target_rgbd_image,
                              np.asarray(target_rgbd_image.color), pts_s, pts_t,
                              np.ones(pts_s.shape[0]), "Initial BF matching")
 
-    focal_input = (pinhole_camera_intrinsic.intrinsic_matrix[0, 0] +
-                   pinhole_camera_intrinsic.intrinsic_matrix[1, 1]) / 2.0
+    focal_input = (pinhole_camera_intrinsic.intrinsic_matrix[0, 0] + pinhole_camera_intrinsic.intrinsic_matrix[1, 1]) / 2.0
     pp_x = pinhole_camera_intrinsic.intrinsic_matrix[0, 2]
     pp_y = pinhole_camera_intrinsic.intrinsic_matrix[1, 2]
 
@@ -90,18 +89,15 @@ def pose_estimation(source_rgbd_image, target_rgbd_image,
     cnt = 0
     for i in range(pts_s.shape[0]):
         if mask[i]:
-            xyz_s = get_xyz_from_pts(pts_s[i, :], depth_s, pp_x, pp_y,
-                                     focal_input)
+            xyz_s = get_xyz_from_pts(pts_s[i, :], depth_s, pp_x, pp_y, focal_input)
             pts_xyz_s[:, cnt] = xyz_s
-            xyz_t = get_xyz_from_pts(pts_t[i, :], depth_t, pp_x, pp_y,
-                                     focal_input)
+            xyz_t = get_xyz_from_pts(pts_t[i, :], depth_t, pp_x, pp_y, focal_input)
             pts_xyz_t[:, cnt] = xyz_t
             cnt = cnt + 1
     pts_xyz_s = pts_xyz_s[:, :cnt]
     pts_xyz_t = pts_xyz_t[:, :cnt]
 
-    success, trans, inlier_id_vec = estimate_3D_transform_RANSAC(
-        pts_xyz_s, pts_xyz_t)
+    success, trans, inlier_id_vec = estimate_3D_transform_RANSAC(pts_xyz_s, pts_xyz_t)
 
     if debug_draw_correspondences:
         pts_s_new = np.zeros(shape=(len(inlier_id_vec), 2))
@@ -109,10 +105,8 @@ def pose_estimation(source_rgbd_image, target_rgbd_image,
         mask = np.ones(len(inlier_id_vec))
         cnt = 0
         for i in inlier_id_vec:
-            u_s, v_s = get_uv_from_xyz(pts_xyz_s[0, i], pts_xyz_s[1, i],
-                                       pts_xyz_s[2, i], pp_x, pp_y, focal_input)
-            u_t, v_t = get_uv_from_xyz(pts_xyz_t[0, i], pts_xyz_t[1, i],
-                                       pts_xyz_t[2, i], pp_x, pp_y, focal_input)
+            u_s, v_s = get_uv_from_xyz(pts_xyz_s[0, i], pts_xyz_s[1, i], pts_xyz_s[2, i], pp_x, pp_y, focal_input)
+            u_t, v_t = get_uv_from_xyz(pts_xyz_t[0, i], pts_xyz_t[1, i], pts_xyz_t[2, i], pp_x, pp_y, focal_input)
             pts_s_new[cnt, :] = [u_s, v_s]
             pts_t_new[cnt, :] = [u_t, v_t]
             cnt = cnt + 1
@@ -142,9 +136,10 @@ def draw_correspondences(img_s, img_t, pts_s, pts_t, mask, title):
                      color=np.random.random(3) / 2 + 0.5,
                      lw=1.0)
     plt.imshow(new_img)
-    plt.pause(0.5)
-    plt.close()
-
+    plt.show(block=False)
+    # plt.pause(0.5)
+    # plt.close()
+    pass
 
 def estimate_3D_transform_RANSAC(pts_xyz_s, pts_xyz_t):
     max_iter = 1000
@@ -168,8 +163,7 @@ def estimate_3D_transform_RANSAC(pts_xyz_s, pts_xyz_t):
         R_approx, t_approx = estimate_3D_transform(sample_xyz_s, sample_xyz_t)
 
         # evaluation
-        diff_mat = pts_xyz_t - (np.matmul(R_approx, pts_xyz_s) +
-                                np.tile(t_approx, [1, n_points]))
+        diff_mat = pts_xyz_t - (np.matmul(R_approx, pts_xyz_s) + np.tile(t_approx, [1, n_points]))
         diff = [np.linalg.norm(diff_mat[:, i]) for i in range(n_points)]
         n_inlier = len([1 for diff_iter in diff if diff_iter < max_distance])
 
@@ -231,8 +225,7 @@ def get_xyz_from_pts(pts_row, depth, px, py, focal):
         d1 = depth[v0, u0 + 1]
         d2 = depth[v0 + 1, u0]
         d3 = depth[v0 + 1, u0 + 1]
-        d = (1 - vp) * (d1 * up + d0 * (1 - up)) + vp * (d3 * up + d2 *
-                                                         (1 - up))
+        d = (1 - vp) * (d1 * up + d0 * (1 - up)) + vp * (d3 * up + d2 * (1 - up))
         return get_xyz_from_uv(u, v, d, px, py, focal)
     else:
         return [0, 0, 0]

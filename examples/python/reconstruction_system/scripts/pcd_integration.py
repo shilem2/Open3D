@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import open3d as o3d
 
+np.set_printoptions(precision=5, suppress=True)
 
 import json
 import time
@@ -39,6 +40,33 @@ def pcd_integration():
     pcd0 = o3d.io.read_point_cloud(pcd0_file)
     pcd1 = o3d.io.read_point_cloud(pcd1_file)
 
+    T_init = np.array([[1,   0,    0,   -2000],
+                       [0,  -1,    0,   -2000],
+                       [0,   0,   -1,   -1000],
+                       [0,   0,    0,    1],
+                       ])
+
+    # T_init_0 = np.array([[0.99916,    -0.0279078, -0.0299502, -2099.5],
+    #                      [-0.0283925, -0.999466,  -0.0159614, -1979.55],
+    #                      [-0.0294902,  0.0167964, -0.999421,  -907.6],
+    #                      [0,           0,          0,          1],
+    #                      ])
+    # T_init_1 = np.array([[0.999994,    0.00104767,  0.00389073, -1990.58],
+    #                      [0.00104155, -0.999998,    0.00184154, -2001.92],
+    #                      [0.00389326, -0.00183791, -0.999993,   -1000.65],
+    #                      [0,           0,           0,           1],
+    #                      ])
+
+    # pcd0 = pcd0.transform(T_init)
+    # pcd1 = pcd1.transform(T_init)
+    # pcd0 = pcd0.transform(np.linalg.inv(T_init))
+    # pcd1 = pcd1.transform(np.linalg.inv(T_init))
+    # pcd0 = pcd0.transform(T_init_0)
+    # pcd1 = pcd1.transform(T_init_1)
+    # pcd0 = pcd0.transform(np.linalg.inv(T_init_0))
+    # pcd1 = pcd1.transform(np.linalg.inv(T_init_1))
+
+
     # direct transformation
     # T = np.array([[0.618462, -0.428643,  0.658612,  -856.314],
     #               [0.428104,  0.886618,  0.175031,  -236.403],
@@ -60,17 +88,22 @@ def pcd_integration():
     #               [-0.64597401,   0.18787587,    0.73987852,  344.81816623],
     #               [-0,        -0,        -0,         1],
     #               ])
+    # T = np.linalg.inv(T)  # use inverse transformation
 
-    pcd0_T = copy.deepcopy(pcd0).transform(T)
+
+    # pcd0_T = copy.deepcopy(pcd0).transform(T)
     # pcd1_T = copy.deepcopy(pcd1).transform(T)
+    pcd0_T = copy.deepcopy(pcd0).transform(T).transform(T_init)
+    # pcd0_T = copy.deepcopy(pcd0).transform(T_init)
+    pcd1_T = copy.deepcopy(pcd1).transform(T_init)
 
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name='pcd 0', width=1600, height=1400)
 
     # vis.add_geometry(pcd0)
     vis.add_geometry(pcd0_T)
-    vis.add_geometry(pcd1)
-    # vis.add_geometry(pcd1_T)
+    # vis.add_geometry(pcd1)
+    vis.add_geometry(pcd1_T)
 
     opt = vis.get_render_option()
     opt.mesh_show_back_face = True
@@ -304,9 +337,9 @@ def draw_registration_result(source, target, transformation):
 
 if __name__ == '__main__':
 
-    # pcd_integration()
+    pcd_integration()
     # pcd_registration()
     # run_reconstruction_system()
-    icp_playground()
+    # icp_playground()
 
     pass

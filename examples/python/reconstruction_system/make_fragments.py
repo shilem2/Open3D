@@ -38,9 +38,7 @@ def register_one_rgbd_pair(s, t, color_files, depth_files, intrinsic,
         if with_opencv:
             success_5pt, odo_init = pose_estimation(source_rgbd_image, target_rgbd_image, intrinsic, False)
             if success_5pt:
-                [success, trans, info] = o3d.pipelines.odometry.compute_rgbd_odometry(
-                    source_rgbd_image, target_rgbd_image, intrinsic, odo_init,
-                    o3d.pipelines.odometry.RGBDOdometryJacobianFromHybridTerm(), option)
+                [success, trans, info] = o3d.pipelines.odometry.compute_rgbd_odometry(source_rgbd_image, target_rgbd_image, intrinsic, odo_init, o3d.pipelines.odometry.RGBDOdometryJacobianFromHybridTerm(), option)
                 return [success, trans, info]
         return [False, np.identity(4), np.identity(6)]
     else:
