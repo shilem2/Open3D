@@ -347,6 +347,7 @@ def align_rgb_depth_example():
 
     display = True
     # display = False
+    force_rgb_z_1 = False
 
     rgb = cv2.imread(rgb_file, cv2.IMREAD_UNCHANGED)
     depth = cv2.imread(depth_file, cv2.IMREAD_UNCHANGED)
@@ -389,8 +390,8 @@ def align_rgb_depth_example():
     R_depth2rgb = RR.as_matrix()
     T_depth2rgb = np.concatenate((R_depth2rgb, t_depth2rgb.T), axis=1)
 
-    # T = T_depth2rgb
-    T = T_rgb2depth
+    T = T_depth2rgb
+    # T = T_rgb2depth
 
     # ppy_rgb_shift_list = [-70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 50, 70]
 
@@ -399,7 +400,7 @@ def align_rgb_depth_example():
         rgb_aligned, depth_aligned = align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T,
                                                         display=display,
                                                         ppy_rgb_shift=ppy_rgb_shift,
-                                                        force_rgb_z_1=False,
+                                                        force_rgb_z_1=force_rgb_z_1,
                                                         )
 
         # save output
@@ -440,7 +441,8 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
     w_rgb = intrinsics_rgb['w']
     # TODO: add distortion model? check if needed
 
-    depth_aligned = np.zeros((h_depth, w_depth, 3))
+    # depth_aligned = np.zeros((h_depth, w_depth, 3))
+    depth_aligned = np.zeros((h_depth, w_depth), dtype=np.uint16)
     rgb_aligned = np.zeros((h_depth, w_depth, 3), dtype=np.uint8)
 
     for v in range(h_depth):
@@ -450,13 +452,9 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             # align depth
             # ------------
             # apply depth intrinsics
-            # z = 1  # depth[v, u] * depth_scale
-            if force_rgb_z_1:
-                z = 1
-            else:
-                z = depth[v, u] * depth_scale
+            z = depth[v, u] * depth_scale
 
-            if z <= 0:
+            if force_rgb_z_1 and (z <= 0):
                 z = 1.
 
             x = (u - ppx_d) * z / fx_d
@@ -464,16 +462,32 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
 
             # apply extrinsics
             transformed = T_depth2rgb @ np.array([x, y, z, 1]).T
-            depth_aligned[v, u, 0] = transformed[0]
-            depth_aligned[v, u, 1] = transformed[1]
-            depth_aligned[v, u, 2] = transformed[2]
+
+            x_t = transformed[0]
+            y_t = transformed[1]
+            z_t = transformed[2]
+
+            # depth_aligned[v, u, 0] = transformed[0]
+            # depth_aligned[v, u, 1] = transformed[1]
+            # depth_aligned[v, u, 2] = transformed[2]
+
+            # apply depth intrinsics
+            u_t = x_t * fx_d / z_t + ppx_d
+            v_t = y_t * fy_d / z_t + ppy_d
+            w_t = (z_t / depth_scale).round().astype(np.uint16)
+            # FIXME: need to do interpolation, currently starting with simple rounding
+            u_t = int(round(u_t))
+            v_t = int(round(v_t))
+
+            # depth_aligned[v_t, u_t] = w_t
+            # depth_aligned[v, u] = w_t
+            if (u_t > 0) and (u_t < w_depth) and (v_t > 0) and (v_t < h_depth):
+                depth_aligned[v_t, u_t] = w_t
 
             # ------------
             # align rgb
             # ------------
-            x_t = transformed[0]
-            y_t = transformed[1]
-            z_t = transformed[2]
+
             xx = x_t * fx_rgb / z_t + ppx_rgb
             yy = y_t * fy_rgb / z_t + ppy_rgb + ppy_rgb_shift
             # xx and yy are indices into the RGB frame, but they may contain invalid values of parts of the scene
