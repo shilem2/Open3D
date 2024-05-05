@@ -342,10 +342,15 @@ def align_rgb_depth_example():
     rgb_file = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec/00_color_0001.png'
     depth_file = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec/00_depth_0001.png'
 
+    output_dir = Path(rgb_file).parent / 'aligned_by_me'
+
     display = True
+    display = False
 
     rgb = cv2.imread(rgb_file, cv2.IMREAD_UNCHANGED)
     depth = cv2.imread(depth_file, cv2.IMREAD_UNCHANGED)
+
+    # camera 00 - left camera (when standing in front of IQ)
 
     intrinsics_rgb = {'pp': [656.853, 346.649],
                       'f': [902.415, 902.806],
@@ -362,105 +367,38 @@ def align_rgb_depth_example():
                         }
     depth_scale = 0.0002500000118743628
 
-    R_depth2rgb = np.array([[0.9999, -0.0139942, -0.00215088],
-                            [0.0139299, 0.999527, -0.0274352],
-                            [0.00253379, 0.0274025, 0.999621]])
-    t_depth2rgb = np.array([[-0.000173527, 0.0142209, -0.00411188]])
+    R_depth2rgb = np.array([[0.999891, -0.0139051, -0.00503139],
+                            [0.0137717, 0.999576, -0.02565],
+                            [0.00538593, 0.0255779, 0.999658]])
+    t_depth2rgb = np.array([[-0.000126142, 0.0140693, -0.002791]])
     T_depth2rgb = np.concatenate((R_depth2rgb, t_depth2rgb.T), axis=1)
 
-    R_rgb2depth = np.array([[0.9999, 0.0139299, 0.00253379],
-                            [-0.0139942, 0.999527, 0.0274025],
-                            [-0.00215088, -0.0274352, 0.999621]])
-    t_rgb2depth = np.array([[0.000363675, -0.0143245, 0.00372108]])
+    R_rgb2depth = np.array([[0.999891, 0.0137717, 0.00538593],
+                            [-0.0139051, 0.999576, 0.0255779],
+                            [-0.00503139, -0.02565, 0.999658]])
+    t_rgb2depth = np.array([[0.000307721, -0.0141332, 0.00243087]])
     T_rgb2depth = np.concatenate((R_rgb2depth, t_rgb2depth.T), axis=1)
 
     T = T_depth2rgb
-    # T = T_rgb2depth
 
-    rgb_aligned, depth_aligned = align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T, display=display)
+    ppy_rgb_shift_list = [-70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 50, 70]
+    for ppy_rgb_shift in ppy_rgb_shift_list:
+        rgb_aligned, depth_aligned = align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T, display=display, ppy_rgb_shift=ppy_rgb_shift)
+
+        # save output
+        output_dir.mkdir(exist_ok=True, parents=True)
+        # cv2.imwrite((output_dir / Path(rgb_file).name).as_posix(), rgb_aligned)
+        # # cv2.imwrite((output_dir / Path(depth_file).name).as_posix(), depth_aligned)
+        cv2.imwrite((output_dir / Path(depth_file).name).as_posix(), depth)
+
+        sign_char = 'p' if ppy_rgb_shift > 0 else 'm'  # plus or minos
+        rbg_aligned_file = (output_dir / (Path(rgb_file).stem + '_' + sign_char + str(abs(ppy_rgb_shift)) + Path(rgb_file).suffix)).as_posix()
+        cv2.imwrite(rbg_aligned_file, rgb_aligned)
 
     pass
 
-def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T_depth2rgb, display=False):
-    """
-    Adapted from:
-    1) https://www.codefull.org/2016/03/align-depth-and-color-frames-depth-and-rgb-registration/
-    2) Section 3 of : https://ap.isr.uc.pt/archive/clawar2011_v1.pdf
-    """
-
-    # unpack intrinsics
-    fx_d = intrinsics_depth['f'][0]
-    fy_d = intrinsics_depth['f'][1]
-    ppx_d = intrinsics_depth['pp'][0]
-    ppy_d = intrinsics_depth['pp'][1]
-    h_depth = intrinsics_depth['h']
-    w_depth = intrinsics_depth['w']
-
-    fx_rgb = intrinsics_rgb['f'][0]
-    fy_rgb = intrinsics_rgb['f'][1]
-    ppx_rgb = intrinsics_rgb['pp'][0]
-    ppy_rgb = intrinsics_rgb['pp'][1]
-    h_rgb = intrinsics_rgb['h']
-    w_rgb = intrinsics_rgb['w']
-    # TODO: add distortion model? check if needed
-
-    depth_aligned = np.zeros((h_depth, w_depth, 3))
-    rgb_aligned = np.zeros((h_depth, w_depth, 3), dtype=np.uint8)
-
-    for v in range(h_depth):
-        for u in range(w_depth):
-
-            # ------------
-            # align depth
-            # ------------
-            # apply depth intrinsics - transform from pixels to mm
-            z = depth[v, u] * depth_scale
-            x = (u - ppx_d) * z / fx_d
-            y = (v - ppy_d) * z / fy_d
-
-            # apply extrinsics
-            transformed = T_depth2rgb @ np.array([x, y, z, 1]).T
-            depth_aligned[v, u, 0] = transformed[0]
-            depth_aligned[v, u, 1] = transformed[1]
-            depth_aligned[v, u, 2] = transformed[2]
-
-            # ------------
-            # align rgb
-            # ------------
-            xx = transformed[0]
-            yy = transformed[1]
-            zz = transformed[2]
-            # apply rgb intrinsics - transform from mm to pixels
-            u_rgb = xx * fx_rgb / zz + ppx_rgb
-            v_rgb = yy * fy_rgb / zz + ppy_rgb
-            # u_rgb and v_rgb are indices into the RGB frame, but they may contain invalid values of parts of the scene
-            # that are not visible to the RGB camera
-            if not np.isfinite(u_rgb) or not np.isfinite(v_rgb):
-                continue
-            # FIXME: need to do interpolation, currently starting with simple rounding
-            u_rgb = int(round(u_rgb))
-            yy = int(round(v_rgb))
-            if (u_rgb < 0) or (u_rgb >= w_rgb) or (v_rgb < 0) or (v_rgb >= h_rgb):
-                continue
-
-            # FIXME: need to do interpolation, currently starting with simple rounding
-            rgb_aligned[v, u, 0] = rgb[v_rgb, u_rgb, 0]
-            rgb_aligned[v, u, 1] = rgb[v_rgb, u_rgb, 1]
-            rgb_aligned[v, u, 2] = rgb[v_rgb, u_rgb, 2]
-
-            pass
-
-    if display:
-        cv2.imshow('rgb', rgb)
-        cv2.imshow('depth', depth)
-        cv2.imshow('rgb_aligned', rgb_aligned)
-        cv2.imshow('depth_aligned', depth_aligned)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-    return rgb_aligned, depth_aligned
-
-def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T_depth2rgb, display=False):
+def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T_depth2rgb, display=False,
+                       ppy_rgb_shift=0):
     """
     Adapted from:
     1) https://www.codefull.org/2016/03/align-depth-and-color-frames-depth-and-rgb-registration/
@@ -493,6 +431,7 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             # align depth
             # ------------
             # apply depth intrinsics
+            # z = 1  # depth[v, u] * depth_scale
             z = depth[v, u] * depth_scale
             x = (u - ppx_d) * z / fx_d
             y = (v - ppy_d) * z / fy_d
@@ -507,7 +446,7 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             # align rgb
             # ------------
             xx = x * fx_rgb / z + ppx_rgb
-            yy = y * fy_rgb / z + ppy_rgb
+            yy = y * fy_rgb / z + ppy_rgb + ppy_rgb_shift
             # xx and yy are indices into the RGB frame, but they may contain invalid values of parts of the scene
             # that are not visible to the RGB camera
             if not np.isfinite(xx) or not np.isfinite(yy):
@@ -534,7 +473,6 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
         cv2.destroyAllWindows()
 
     return rgb_aligned, depth_aligned
-
 
 
 if __name__ == '__main__':
