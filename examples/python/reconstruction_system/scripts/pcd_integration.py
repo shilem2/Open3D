@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import open3d as o3d
 import cv2
+from scipy.spatial.transform import Rotation as R
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -345,7 +346,7 @@ def align_rgb_depth_example():
     output_dir = Path(rgb_file).parent / 'aligned_by_me'
 
     display = True
-    display = False
+    # display = False
 
     rgb = cv2.imread(rgb_file, cv2.IMREAD_UNCHANGED)
     depth = cv2.imread(depth_file, cv2.IMREAD_UNCHANGED)
@@ -379,26 +380,44 @@ def align_rgb_depth_example():
     t_rgb2depth = np.array([[0.000307721, -0.0141332, 0.00243087]])
     T_rgb2depth = np.concatenate((R_rgb2depth, t_rgb2depth.T), axis=1)
 
-    T = T_depth2rgb
+    # calculate rotation angles
+    r = R.from_matrix(R_depth2rgb)
+    euler_angles = r.as_euler('zyx', degrees=True)
+    euler_delta = np.array([0, 0, 0])
+    euler_angles_modified = euler_angles + euler_delta
+    RR = R.from_euler('zyx', euler_angles_modified, degrees=True)
+    R_depth2rgb = RR.as_matrix()
+    T_depth2rgb = np.concatenate((R_depth2rgb, t_depth2rgb.T), axis=1)
 
-    ppy_rgb_shift_list = [-70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 50, 70]
+    # T = T_depth2rgb
+    T = T_rgb2depth
+
+    # ppy_rgb_shift_list = [-70, -60, -50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50, 50, 70]
+
+    ppy_rgb_shift_list = [0]
     for ppy_rgb_shift in ppy_rgb_shift_list:
-        rgb_aligned, depth_aligned = align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T, display=display, ppy_rgb_shift=ppy_rgb_shift)
+        rgb_aligned, depth_aligned = align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T,
+                                                        display=display,
+                                                        ppy_rgb_shift=ppy_rgb_shift,
+                                                        force_rgb_z_1=False,
+                                                        )
 
         # save output
         output_dir.mkdir(exist_ok=True, parents=True)
         # cv2.imwrite((output_dir / Path(rgb_file).name).as_posix(), rgb_aligned)
-        # # cv2.imwrite((output_dir / Path(depth_file).name).as_posix(), depth_aligned)
-        cv2.imwrite((output_dir / Path(depth_file).name).as_posix(), depth)
+        cv2.imwrite((output_dir / (Path(depth_file).stem + '_aligned' + Path(depth_file).suffix)).as_posix(), depth_aligned)
+        cv2.imwrite((output_dir / (Path(depth_file).stem + '_orig' + Path(depth_file).suffix)).as_posix(), depth)
 
         sign_char = 'p' if ppy_rgb_shift > 0 else 'm'  # plus or minos
-        rbg_aligned_file = (output_dir / (Path(rgb_file).stem + '_' + sign_char + str(abs(ppy_rgb_shift)) + Path(rgb_file).suffix)).as_posix()
+        rbg_aligned_file = (output_dir / (Path(rgb_file).stem + '_' + sign_char + str(abs(ppy_rgb_shift))
+                                          + '_euler_delta_' + f'{euler_delta}'
+                                          + Path(rgb_file).suffix)).as_posix()
         cv2.imwrite(rbg_aligned_file, rgb_aligned)
 
     pass
 
 def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale, T_depth2rgb, display=False,
-                       ppy_rgb_shift=0):
+                       ppy_rgb_shift=0, force_rgb_z_1=False):
     """
     Adapted from:
     1) https://www.codefull.org/2016/03/align-depth-and-color-frames-depth-and-rgb-registration/
@@ -432,7 +451,14 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             # ------------
             # apply depth intrinsics
             # z = 1  # depth[v, u] * depth_scale
-            z = depth[v, u] * depth_scale
+            if force_rgb_z_1:
+                z = 1
+            else:
+                z = depth[v, u] * depth_scale
+
+            if z <= 0:
+                z = 1.
+
             x = (u - ppx_d) * z / fx_d
             y = (v - ppy_d) * z / fy_d
 
@@ -445,8 +471,11 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             # ------------
             # align rgb
             # ------------
-            xx = x * fx_rgb / z + ppx_rgb
-            yy = y * fy_rgb / z + ppy_rgb + ppy_rgb_shift
+            x_t = transformed[0]
+            y_t = transformed[1]
+            z_t = transformed[2]
+            xx = x_t * fx_rgb / z_t + ppx_rgb
+            yy = y_t * fy_rgb / z_t + ppy_rgb + ppy_rgb_shift
             # xx and yy are indices into the RGB frame, but they may contain invalid values of parts of the scene
             # that are not visible to the RGB camera
             if not np.isfinite(xx) or not np.isfinite(yy):
@@ -454,7 +483,7 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             # FIXME: need to do interpolation, currently starting with simple rounding
             xx = int(round(xx))
             yy = int(round(yy))
-            if (xx < 0) or (xx >= w_rgb) or (yy < 0) or (yy >= h_rgb) :
+            if (xx < 0) or (xx >= w_rgb) or (yy < 0) or (yy >= h_rgb):
                 continue
 
             # FIXME: need to do interpolation, currently starting with simple rounding
