@@ -26,6 +26,7 @@ def get_camera_parameters():
 
     pipe = rs.pipeline()
     selection = pipe.start(config)
+    print(selection.get_device())
 
     # intrinsics
     depth_stream = selection.get_stream(rs.stream.depth).as_video_stream_profile()
@@ -188,7 +189,7 @@ def align_depth2color_example():
 
 if __name__ == '__main__':
 
+    align_depth2color_example()
     get_camera_parameters()
-    # align_depth2color_example()
 
     pass
