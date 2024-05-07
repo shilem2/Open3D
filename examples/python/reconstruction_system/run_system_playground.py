@@ -34,8 +34,9 @@ def run_reconstruction_system():
     # config_json_file = 'config/realsense_l515.json'
     # default_dataset = 'lounge'
     # default_dataset = 'bedroom'
-    default_dataset = 'jack_jack'
-    debug_mode = True
+    # default_dataset = 'jack_jack'
+    default_dataset = 'custom_realsense'
+    debug_mode = False
     device = 'cpu:0'
     make = True  # make fragments
     register = True  # register fragments
@@ -43,7 +44,7 @@ def run_reconstruction_system():
     integrate = True  # integrate scene
     slac = False  # [Optional] Use --slac and --slac_integrate flags to perform SLAC optimisation.
     slac_integrate = False
-    python_multi_threading = False
+    python_multi_threading = True
 
     if config_json_file is not None:
         with open(config_json_file) as json_file:

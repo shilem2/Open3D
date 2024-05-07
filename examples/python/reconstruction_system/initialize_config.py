@@ -14,7 +14,7 @@ import sys
 import json
 from os.path import isfile, join, splitext, dirname, basename
 from warnings import warn
-from data_loader import lounge_data_loader, bedroom_data_loader, jackjack_data_loader, IQ_data_loader
+from data_loader import lounge_data_loader, bedroom_data_loader, jackjack_data_loader, IQ_data_loader, realsense_data_loader
 
 
 def extract_rgbd_frames(rgbd_video_file):
@@ -121,6 +121,8 @@ def dataset_loader(dataset_name):
         config = jackjack_data_loader()
     elif dataset_name == 'IQ':
         config = IQ_data_loader()
+    elif dataset_name == 'custom_realsense':
+        config = realsense_data_loader()
     else:
         print(
             "The requested dataset is not available. Available dataset options include lounge and jack_jack."

@@ -99,3 +99,27 @@ def IQ_data_loader():
     config['n_keyframes_per_n_frame'] = 1
 
     return config
+
+def realsense_data_loader():
+    print('Loading RealSense L515 Custom Dataset')
+
+    # Get the dataset.
+    # jackjack_bag = o3d.data.JackJackL515Bag()
+
+    # Set dataset specific parameters.
+    config = {}
+    config['path_dataset'] = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_150316_first_try/'
+    config['path_intrinsic'] = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_150316_first_try/intrinsic.json'
+    config['depth_max'] = 1.
+    config['voxel_size'] = 0.01
+    config['depth_diff_max'] = 0.03
+    config['preference_loop_closure_odometry'] = 0.1
+    config['preference_loop_closure_registration'] = 5.0
+    config['tsdf_cubic_size'] = 0.75
+    config['icp_method'] = "color"
+    config['global_registration'] = "ransac"
+    config['python_multi_threading'] = False
+    config['n_keyframes_per_n_frame'] = 3
+    config['n_frames_per_fragment'] = 75
+
+    return config

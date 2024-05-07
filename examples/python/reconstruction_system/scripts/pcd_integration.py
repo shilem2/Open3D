@@ -441,7 +441,7 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
     w_rgb = intrinsics_rgb['w']
     # TODO: add distortion model? check if needed
 
-    # depth_aligned = np.zeros((h_depth, w_depth, 3))
+    depth_transformed_coordinates = np.zeros((h_depth, w_depth, 3))
     depth_aligned = np.zeros((h_depth, w_depth), dtype=np.uint16)
     rgb_aligned = np.zeros((h_depth, w_depth, 3), dtype=np.uint8)
 
@@ -467,9 +467,7 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             y_t = transformed[1]
             z_t = transformed[2]
 
-            # depth_aligned[v, u, 0] = transformed[0]
-            # depth_aligned[v, u, 1] = transformed[1]
-            # depth_aligned[v, u, 2] = transformed[2]
+            depth_transformed_coordinates[v, u] = np.array([x_t, y_t, z_t])
 
             # apply depth intrinsics
             u_t = x_t * fx_d / z_t + ppx_d
@@ -484,9 +482,15 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
             if (u_t > 0) and (u_t < w_depth) and (v_t > 0) and (v_t < h_depth):
                 depth_aligned[v_t, u_t] = w_t
 
-            # ------------
-            # align rgb
-            # ------------
+            pass
+
+    # ------------
+    # align rgb
+    # ------------
+    for v in range(h_depth):
+        for u in range(w_depth):
+
+            x_t, y_t, z_t = depth_transformed_coordinates[v, u]
 
             xx = x_t * fx_rgb / z_t + ppx_rgb
             yy = y_t * fy_rgb / z_t + ppy_rgb + ppy_rgb_shift
