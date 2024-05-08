@@ -223,8 +223,10 @@ def get_config(path_dataset_1,
                depth_max=3.,
                depth_scale=3999.999810010204,
                python_multi_threading=False,
-               template_fragment_posegraph='fragments/fragment_%03d.json',
-               template_fragment_posegraph_optimized='fragments/fragment_optimized_%03d.json',
+               output_root_dir='fragments',
+               template_fragment_posegraph='fragment_%03d.json',
+               template_fragment_posegraph_optimized='fragment_optimized_%03d.json',
+               template_fragment_pointcloud='fragment_%03d.ply',
                ):
     print('Loading RealSense L515 Custom Dataset')
 
@@ -250,8 +252,9 @@ def get_config(path_dataset_1,
     config['n_keyframes_per_n_frame'] = n_keyframes_per_n_frame
     config['n_frames_per_fragment'] = 75
     config['convert_rgb_to_intensity'] = True
-    config["template_fragment_posegraph"] = template_fragment_posegraph
-    config["template_fragment_posegraph_optimized"] = template_fragment_posegraph_optimized
+    config["template_fragment_posegraph"] = (Path(output_root_dir) / template_fragment_posegraph).as_posix()
+    config["template_fragment_posegraph_optimized"] = (Path(output_root_dir) / template_fragment_posegraph_optimized).as_posix()
+    config["template_fragment_pointcloud"] = (Path(output_root_dir) / template_fragment_pointcloud).as_posix()
 
     # set all other config parameters
     initialize_config(config)
@@ -314,11 +317,9 @@ def main_two_cameras():
 
     depth_scale = 1 / 0.0002500000118743628
 
-    template_fragment_posegraph = 'fragments_two_cameras/fragment_%03d.json'
-    template_fragment_posegraph_optimized = 'fragments_two_cameras/fragment_optimized_%03d.json'
-
+    output_root_dir = 'fragments_two_cameras'
     config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
-                        template_fragment_posegraph=template_fragment_posegraph, template_fragment_posegraph_optimized=template_fragment_posegraph_optimized)
+                        output_root_dir=output_root_dir)
 
 
     # direct transformation
@@ -346,7 +347,8 @@ def main_two_cameras():
 
 
     print("making fragments from RGBD sequence.")
-    make_clean_folder(Path(config["path_dataset"]) / config["folder_fragment"])
+    # make_clean_folder(Path(config["path_dataset"]) / config["folder_fragment"])
+    make_clean_folder(Path(config["path_dataset"]) / output_root_dir)
 
     [color_files_1, depth_files_1] = get_rgbd_file_lists(path_dataset_1)
     [color_files_2, depth_files_2] = get_rgbd_file_lists(path_dataset_2)
