@@ -44,7 +44,7 @@ def run_reconstruction_system():
     integrate = True  # integrate scene
     slac = False  # [Optional] Use --slac and --slac_integrate flags to perform SLAC optimisation.
     slac_integrate = False
-    python_multi_threading = True
+    python_multi_threading = False
 
     if config_json_file is not None:
         with open(config_json_file) as json_file:
