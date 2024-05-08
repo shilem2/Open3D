@@ -103,24 +103,37 @@ def make_posegraph_for_fragment_two_cameras(color_files, depth_files,
     trans_odometry_1 = trans_init_1
     trans_odometry_2 = trans_init_2
     trans_odometry_2_inv = np.linalg.inv(trans_odometry_2)
-    pose_graph.nodes.append(o3d.pipelines.registration.PoseGraphNode(trans_odometry_1))
+
+    trans_odometry = trans_odometry_1
+
+    pose_graph.nodes.append(o3d.pipelines.registration.PoseGraphNode(trans_odometry))
     for s in range(sid, eid):
         for t in range(s + 1, eid):
-            # odometry
-            if t == s + 1:
 
-                if s < sid_2 and t < sid_2:  # both images from first camera
-                    trans_odometry = trans_odometry_1
-                    intrinsic = intrinsic_1
-                elif s < sid_2 and t >= sid_2:  # s from first camera and t from second camera
-                    trans_odometry = trans_odometry_2
-                    intrinsic = intrinsic_2  # FIXME: need 2 different intrinsics...
-                elif s >= sid_2 and t < sid_2:  # s from second camera and t from first camera (maybe cannot be reached
-                    trans_odometry = trans_odometry_2_inv
-                    intrinsic = intrinsic_1  # FIXME: need 2 different intrinsics...
-                elif s >= sid_2 and t >= sid_2:  # both images from second camera
-                    trans_odometry = np.identity(4)  # FIXME: not sure if needed identity or trans_odometry_2
-                    intrinsic = intrinsic_2
+            if s < sid_2 and t < sid_2:  # both images from first camera
+                intrinsic = intrinsic_1
+            elif s < sid_2 and t >= sid_2:  # s from first camera and t from second camera
+                intrinsic = intrinsic_2  # FIXME: need 2 different intrinsics...
+            elif s >= sid_2 and t < sid_2:  # s from second camera and t from first camera (maybe cannot be reached
+                intrinsic = intrinsic_1  # FIXME: need 2 different intrinsics...
+            elif s >= sid_2 and t >= sid_2:  # both images from second camera
+                intrinsic = intrinsic_2
+
+            # odometry
+            if (t == s + 1) and (((s < sid_2) and (t < sid_2)) or ((s >= sid_2) and (t >= sid_2))):
+
+                # if s < sid_2 and t < sid_2:  # both images from first camera
+                #     trans_odometry = trans_odometry_1
+                #     intrinsic = intrinsic_1
+                # elif s < sid_2 and t >= sid_2:  # s from first camera and t from second camera
+                #     trans_odometry = trans_odometry_2
+                #     intrinsic = intrinsic_2  # FIXME: need 2 different intrinsics...
+                # elif s >= sid_2 and t < sid_2:  # s from second camera and t from first camera (maybe cannot be reached
+                #     trans_odometry = trans_odometry_2_inv
+                #     intrinsic = intrinsic_1  # FIXME: need 2 different intrinsics...
+                # elif s >= sid_2 and t >= sid_2:  # both images from second camera
+                #     trans_odometry = np.identity(4)  # FIXME: not sure if needed identity or trans_odometry_2
+                #     intrinsic = intrinsic_2
 
                 print("Fragment %03d / %03d :: RGBD matching between frame : %d and %d" % (fragment_id, n_fragments - 1, s, t))
                 [success, trans, info] = register_one_rgbd_pair(s, t, color_files, depth_files, intrinsic, with_opencv, config)
@@ -134,24 +147,26 @@ def make_posegraph_for_fragment_two_cameras(color_files, depth_files,
                                                                                  uncertain=False))
 
                 # save updated transformation
-                # FIXME: not sure if needed
-                if s < sid_2 and t < sid_2:  # both images from first camera
-                    trans_odometry_1 = trans_odometry
-                elif s < sid_2 and t >= sid_2:  # s from first camera and t from second camera
-                    trans_odometry_2 = trans_odometry
-                elif s >= sid_2 and t < sid_2:  # s from second camera and t from first camera (maybe cannot be reached
-                    trans_odometry_2_inv = trans_odometry
-                elif s >= sid_2 and t >= sid_2:  # both images from second camera
-                    trans_odometry_2 = trans_odometry
+                # # FIXME: not sure if needed
+                # if s < sid_2 and t < sid_2:  # both images from first camera
+                #     trans_odometry_1 = trans_odometry
+                # elif s < sid_2 and t >= sid_2:  # s from first camera and t from second camera
+                #     trans_odometry_2 = trans_odometry
+                # elif s >= sid_2 and t < sid_2:  # s from second camera and t from first camera (maybe cannot be reached
+                #     trans_odometry_2_inv = trans_odometry
+                # elif s >= sid_2 and t >= sid_2:  # both images from second camera
+                #     trans_odometry_2 = trans_odometry
 
             # keyframe loop closure
-            if s % config['n_keyframes_per_n_frame'] == 0 and t % config['n_keyframes_per_n_frame'] == 0:
+            if (s % config['n_keyframes_per_n_frame'] == 0 and t % config['n_keyframes_per_n_frame'] == 0)\
+                    or (((s < sid_2) and (t >= sid_2)) or ((s >= sid_2) and (t < sid_2))):
                 print("Fragment %03d / %03d :: RGBD matching between frame : %d and %d" % (fragment_id, n_fragments - 1, s, t))
                 [success, trans, info] = register_one_rgbd_pair(s, t, color_files, depth_files, intrinsic, with_opencv, config)
                 if success:
                     pose_graph.edges.append(o3d.pipelines.registration.PoseGraphEdge(s - sid, t - sid, trans, info, uncertain=True))
 
     pose_graph_file = join(path_dataset_1, config["template_fragment_posegraph"] % fragment_id)
+    Path(pose_graph_file).parent.mkdir(exist_ok=True, parents=True)
     o3d.io.write_pose_graph(pose_graph_file, pose_graph)
 
     pass
@@ -209,6 +224,7 @@ def get_config(path_dataset_1,
                depth_scale=3999.999810010204,
                python_multi_threading=False,
                template_fragment_posegraph='fragments/fragment_%03d.json',
+               template_fragment_posegraph_optimized='fragments/fragment_optimized_%03d.json',
                ):
     print('Loading RealSense L515 Custom Dataset')
 
@@ -235,6 +251,7 @@ def get_config(path_dataset_1,
     config['n_frames_per_fragment'] = 75
     config['convert_rgb_to_intensity'] = True
     config["template_fragment_posegraph"] = template_fragment_posegraph
+    config["template_fragment_posegraph_optimized"] = template_fragment_posegraph_optimized
 
     # set all other config parameters
     initialize_config(config)
@@ -252,8 +269,8 @@ def main_single_camera():
     path_dataset = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/'
     path_intrinsic = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/intrinsic_00_left.json'
     # right camera 01
-    path_dataset = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/'
-    path_intrinsic = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/intrinsic_01_right.json'
+    # path_dataset = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/'
+    # path_intrinsic = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/intrinsic_01_right.json'
 
     depth_scale = 1 / 0.0002500000118743628
 
@@ -298,8 +315,10 @@ def main_two_cameras():
     depth_scale = 1 / 0.0002500000118743628
 
     template_fragment_posegraph = 'fragments_two_cameras/fragment_%03d.json'
+    template_fragment_posegraph_optimized = 'fragments_two_cameras/fragment_optimized_%03d.json'
 
-    config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale, template_fragment_posegraph=template_fragment_posegraph)
+    config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
+                        template_fragment_posegraph=template_fragment_posegraph, template_fragment_posegraph_optimized=template_fragment_posegraph_optimized)
 
 
     # direct transformation
@@ -342,7 +361,7 @@ def main_two_cameras():
 
     fragment_id = 0
     n_fragments = 1
-    n_max_images = 1  # -1
+    n_max_images = 2  # -1
 
     # sid = fragment_id * config['n_frames_per_fragment']
     # eid = min(sid + config['n_frames_per_fragment'], n_files)
@@ -351,8 +370,8 @@ def main_two_cameras():
 
     sid_1 = 0
     eid_1 = sid_1 + n_max_images
-    sid_2 = eid_1 + 1
-    eid_2 = sid_2 + n_max_images - 1
+    sid_2 = eid_1
+    eid_2 = sid_2 + n_max_images
 
     color_files = color_files_1[sid_1:eid_1] + color_files_2[sid_1:eid_1]
     depth_files = depth_files_1[sid_1:eid_1] + depth_files_2[sid_1:eid_1]
