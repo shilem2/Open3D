@@ -166,7 +166,7 @@ def pcd_integration_IQ_meshes():
     # save pointclouds
     pcd_name_0 = Path(pcd0_file).parent / 'fragment_000_processed.ply'
     pcd_name_1 = Path(pcd1_file).parent / 'fragment_000_processed.ply'
-    pcd_name_combined = Path(pcd0_file).parent / 'fragment_combied.ply'
+    pcd_name_combined = Path(pcd0_file).parent / 'fragment_combined.ply'
     o3d.io.write_point_cloud(pcd_name_0.as_posix(), pcd0_filtered_T, write_ascii=False, compressed=True)
     o3d.io.write_point_cloud(pcd_name_1.as_posix(), pcd1_filtered, write_ascii=False, compressed=True)
     o3d.io.write_point_cloud(pcd_name_combined.as_posix(), pcd_combined, write_ascii=False, compressed=True)
@@ -178,7 +178,7 @@ def pcd_integration_IQ_meshes():
 
     # vis.add_geometry(pcd0_filtered_T)
     # vis.add_geometry(pcd1_filtered)
-    vis.add_geometry(pcd_combied)
+    vis.add_geometry(pcd_combined)
 
     opt = vis.get_render_option()
     opt.mesh_show_back_face = True
@@ -190,8 +190,12 @@ def pcd_integration_IQ_meshes():
 
     # ICP registration
     transformation_icp, information_icp = pairwise_registration(source=pcd1_filtered, target=pcd0_filtered_T)
-
     pcd1_T_icp = copy.deepcopy(pcd1_filtered).transform(transformation_icp)
+
+    pcd_combined_icp = pcd0_filtered_T + pcd1_T_icp
+    pcd_name_combined_icp = Path(pcd0_file).parent / 'fragment_combined_icp_point_to_plane_pairwise_reg.ply'
+    o3d.io.write_point_cloud(pcd_name_combined_icp.as_posix(), pcd_combined_icp, write_ascii=False, compressed=True)
+
 
     o3d.visualization.draw_geometries([pcd0_filtered_T, pcd1_T_icp])
 
@@ -368,8 +372,8 @@ def pairwise_registration(source, target):
     print("Apply point-to-plane ICP")
     # FIXME: fix these parameters!
     voxel_size = 0.01
-    max_correspondence_distance_coarse = voxel_size * 10
-    max_correspondence_distance_fine = voxel_size * 1
+    max_correspondence_distance_coarse = voxel_size * 1
+    max_correspondence_distance_fine = voxel_size * 0.5
 
     source.estimate_normals()
     target.estimate_normals()
@@ -503,7 +507,7 @@ def icp_playground():
 
     draw_registration_result(source, target, trans_init)
 
-    threshold = 0.005
+    threshold = 0.02
 
     print("Initial alignment")
     evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
@@ -518,6 +522,13 @@ def icp_playground():
     print(reg_p2p.transformation)
     draw_registration_result(source, target, reg_p2p.transformation)
 
+    source_temp = copy.deepcopy(source)
+    target_temp = copy.deepcopy(target)
+    source_temp.transform(reg_p2p.transformation)
+    pcd_combined_icp_p2p = source_temp + target_temp
+    pcd_name_combined_icp_p2p = Path(pcd0_file).parent / 'fragment_combined_icp_point_to_point.ply'
+    o3d.io.write_point_cloud(pcd_name_combined_icp_p2p.as_posix(), pcd_combined_icp_p2p, write_ascii=False, compressed=True)
+
     print("Apply point-to-plane ICP")
     source.estimate_normals()
     target.estimate_normals()
@@ -528,6 +539,14 @@ def icp_playground():
     print("Transformation is:")
     print(reg_p2l.transformation)
     draw_registration_result(source, target, reg_p2l.transformation)
+
+    source_temp = copy.deepcopy(source)
+    target_temp = copy.deepcopy(target)
+    source_temp.transform(reg_p2l.transformation)
+    pcd_combined_icp_p2l = source_temp + target_temp
+    pcd_name_combined_icp_p2l = Path(pcd0_file).parent / 'fragment_combined_icp_point_to_plane.ply'
+    o3d.io.write_point_cloud(pcd_name_combined_icp_p2l.as_posix(), pcd_combined_icp_p2l, write_ascii=False, compressed=True)
+
 
     pass
 
