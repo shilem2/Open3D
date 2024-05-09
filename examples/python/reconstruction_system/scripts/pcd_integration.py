@@ -119,8 +119,46 @@ def pcd_integration_IQ_meshes():
     pcd0_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/fragments_single_camera/fragment_000.ply'
     pcd1_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/fragments_single_camera/fragment_000.ply'
 
+    display = True
+
     pcd0 = o3d.io.read_point_cloud(pcd0_file)
     pcd1 = o3d.io.read_point_cloud(pcd1_file)
+
+    p = np.array(pcd0.points)
+    print(p[:, 0].min(), p[:, 0].max())
+    print(p[:, 1].min(), p[:, 1].max())
+    print(p[:, 2].min(), p[:, 2].max())
+    import pandas as pd
+    df = pd.DataFrame({'x': p[:, 0], 'y': p[:, 1], 'z': p[:, 2]})
+    print(df.describe(percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]).round(2))
+
+    pcd0_filtered = filter_work_volume_pcd(pcd0, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], display=display)
+
+    depth_th = 1.5
+    ind = np.where(p[:, 2] < depth_th)[0]
+    pcd_filtered = copy.deepcopy(pcd0)
+    pcd_filtered = pcd_filtered.select_by_index(ind)
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name='pcd 0', width=1600, height=1400)
+    vis.add_geometry(pcd_filtered)
+    opt = vis.get_render_option()
+    opt.mesh_show_back_face = True
+
+    # # update camera viewpoint, based on https://github.com/isl-org/Open3D/issues/1483#issuecomment-1423493280
+    # extrinsic = np.array([[1,   0,    0,   -2000],
+    #                       [0,  -1,    0,   -2000],
+    #                       [0,   0,   -1,   -1000],
+    #                       [0,   0,    0,    1],])
+    # ctr = vis.get_view_control()
+    # # This line will obtain the default camera parameters .
+    # camera_params = ctr.convert_to_pinhole_camera_parameters()
+    # camera_params.extrinsic = extrinsic
+    # ctr.convert_from_pinhole_camera_parameters(camera_params)
+
+    vis.run()
+    vis.destroy_window()
+
+
 
     # direct transformation calculated by RecFusion calibration pattern
     T = np.array([[0.618462, -0.428643,  0.658612,  -856.314/1000],
@@ -160,6 +198,73 @@ def pcd_integration_IQ_meshes():
     pass
 
 
+def filter_work_volume_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], display=False):
+
+    points = np.asarray(pcd_in.points)
+    ind = np.where((points[:, 0] > x_min_max[0]) & (points[:, 0] < x_min_max[1]) &
+                   (points[:, 1] > y_min_max[0]) & (points[:, 1] < y_min_max[1]) &
+                   (points[:, 2] > z_min_max[0]) & (points[:, 2] < z_min_max[1]))[0]
+
+    pcd_filtered = copy.deepcopy(pcd_in)
+    pcd_filtered = pcd_filtered.select_by_index(ind)
+
+    if display:
+        # change color of pcd_in
+        color = [255. / 255, 140. / 255, 0. / 255]  # orange
+        pcd_in.paint_uniform_color(color)
+
+        vis = o3d.visualization.Visualizer()
+        vis.create_window(window_name='pcd filtered', width=1600, height=1400)
+        vis.add_geometry(pcd_in)
+        vis.add_geometry(pcd_filtered)
+        opt = vis.get_render_option()
+        opt.mesh_show_back_face = True
+
+        # vis.get_view_control().set_front([-0.038879764680673251, -0.014974666807244292, -0.99913168464041202])
+        # vis.get_view_control().set_lookat([0.099609375, -0.106201171875, 1.7450759559776579])
+        # vis.get_view_control().set_up([0.13100167754733352, -0.99133410197675953, 0.0097600582844658227])
+        # vis.get_view_control().set_zoom(0.382)
+
+        # update camera viewpoint, based on https://github.com/isl-org/Open3D/issues/1483#issuecomment-1423493280
+        # extrinsic = np.array([[1, 0, 0, -2],
+        #                       [0, -1, 0, -2],
+        #                       [0, 0, -1, -1],
+        #                       [0, 0, 0, 1], ])
+        # ctr = vis.get_view_control()
+        # # This line will obtain the default camera parameters .
+        # camera_params = ctr.convert_to_pinhole_camera_parameters()
+        # camera_params.extrinsic = extrinsic
+        # ctr.convert_from_pinhole_camera_parameters(camera_params, allow_arbitrary=True)
+        # # vis.update_renderer()
+
+        vis.run()
+        vis.destroy_window()
+
+    return pcd_filtered
+
+
+"""
+{
+	"class_name" : "ViewTrajectory",
+	"interval" : 29,
+	"is_loop" : false,
+	"trajectory" : 
+	[
+		{
+			"boundingbox_max" : [ 2.066162109375, 0.941162109375, 3.0001518726160969 ],
+			"boundingbox_min" : [ -1.866943359375, -1.153564453125, 0.49000003933921871 ],
+			"field_of_view" : 60.0,
+			"front" : [ -0.038879764680673251, -0.014974666807244292, -0.99913168464041202 ],
+			"lookat" : [ 0.099609375, -0.106201171875, 1.7450759559776579 ],
+			"up" : [ 0.13100167754733352, -0.99133410197675953, 0.0097600582844658227 ],
+			"zoom" : 0.38199999999999967
+		}
+	],
+	"version_major" : 1,
+	"version_minor" : 0
+}
+
+"""
 
 def pcd_registration():
 
