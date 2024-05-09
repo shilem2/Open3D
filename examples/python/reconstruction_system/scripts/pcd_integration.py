@@ -132,33 +132,12 @@ def pcd_integration_IQ_meshes():
     df = pd.DataFrame({'x': p[:, 0], 'y': p[:, 1], 'z': p[:, 2]})
     print(df.describe(percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]).round(2))
 
-    pcd0_filtered = filter_work_volume_pcd(pcd0, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], display=display)
+    x_min_max = [-0.5, 0.5]
+    y_min_max = [-0.5, 0.5]
+    z_min_max = [1., 2.]
 
-    depth_th = 1.5
-    ind = np.where(p[:, 2] < depth_th)[0]
-    pcd_filtered = copy.deepcopy(pcd0)
-    pcd_filtered = pcd_filtered.select_by_index(ind)
-    vis = o3d.visualization.Visualizer()
-    vis.create_window(window_name='pcd 0', width=1600, height=1400)
-    vis.add_geometry(pcd_filtered)
-    opt = vis.get_render_option()
-    opt.mesh_show_back_face = True
-
-    # # update camera viewpoint, based on https://github.com/isl-org/Open3D/issues/1483#issuecomment-1423493280
-    # extrinsic = np.array([[1,   0,    0,   -2000],
-    #                       [0,  -1,    0,   -2000],
-    #                       [0,   0,   -1,   -1000],
-    #                       [0,   0,    0,    1],])
-    # ctr = vis.get_view_control()
-    # # This line will obtain the default camera parameters .
-    # camera_params = ctr.convert_to_pinhole_camera_parameters()
-    # camera_params.extrinsic = extrinsic
-    # ctr.convert_from_pinhole_camera_parameters(camera_params)
-
-    vis.run()
-    vis.destroy_window()
-
-
+    pcd0_filtered = filter_work_volume_pcd(pcd0, x_min_max, y_min_max, z_min_max, display=display)
+    pcd1_filtered = filter_work_volume_pcd(pcd1, x_min_max, y_min_max, z_min_max, display=display)
 
     # direct transformation calculated by RecFusion calibration pattern
     T = np.array([[0.618462, -0.428643,  0.658612,  -856.314/1000],
@@ -178,16 +157,14 @@ def pcd_integration_IQ_meshes():
     T = np.linalg.inv(T)  # use inverse transformation
 
 
-    pcd0_T = copy.deepcopy(pcd0).transform(T)
-
+    pcd0_filtered_T = copy.deepcopy(pcd0_filtered).transform(T)
 
     # display
     vis = o3d.visualization.Visualizer()
     vis.create_window(window_name='pcd 0', width=1600, height=1400)
 
-    # vis.add_geometry(pcd0)
-    vis.add_geometry(pcd0_T)
-    vis.add_geometry(pcd1)
+    vis.add_geometry(pcd0_filtered_T)
+    vis.add_geometry(pcd1_filtered)
 
     opt = vis.get_render_option()
     opt.mesh_show_back_face = True
