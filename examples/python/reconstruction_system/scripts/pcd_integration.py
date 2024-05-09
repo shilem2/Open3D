@@ -187,13 +187,8 @@ def filter_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 
     pcd_filtered = copy.deepcopy(pcd_in)
     pcd_filtered = pcd_filtered.select_by_index(ind)
 
-    # dist_mean = 0.0012  # = calc_points_mean_dist(points, n_neighbors=5)  # e.g. 0.0012
-    # radius = 15 * dist_mean
-    # cl, ind = pcd_filtered.remove_radius_outlier(nb_points=500, radius=radius)
-    # if display:
-    #     display_inlier_outlier(pcd_filtered, ind)
-
-    pcd_filtered = outlier_removal(pcd_filtered, dist_mean=0.0012, radius_factor=20, nb_points=1000, iterations=5, display=False)
+    dist_mean = 0.0012  # = calc_points_mean_dist(points, n_neighbors=5)  # e.g. 0.0012
+    pcd_filtered = outlier_removal(pcd_filtered, dist_mean=dist_mean, radius_factor=20, nb_points=1000, iterations=1, display=display)
 
     if display:
         # change color of pcd_in
