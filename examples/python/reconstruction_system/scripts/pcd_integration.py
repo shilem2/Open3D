@@ -6,7 +6,9 @@ import cv2
 import numpy as np
 import open3d as o3d
 import cv2
+import itertools
 from scipy.spatial.transform import Rotation as R
+from sklearn.neighbors import NearestNeighbors
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -119,7 +121,7 @@ def pcd_integration_IQ_meshes():
     pcd0_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/fragments_single_camera/fragment_000.ply'
     pcd1_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/fragments_single_camera/fragment_000.ply'
 
-    display = True
+    display = False
 
     pcd0 = o3d.io.read_point_cloud(pcd0_file)
     pcd1 = o3d.io.read_point_cloud(pcd1_file)
@@ -136,8 +138,8 @@ def pcd_integration_IQ_meshes():
     y_min_max = [-0.5, 0.5]
     z_min_max = [1., 2.]
 
-    pcd0_filtered = filter_work_volume_pcd(pcd0, x_min_max, y_min_max, z_min_max, display=display)
-    pcd1_filtered = filter_work_volume_pcd(pcd1, x_min_max, y_min_max, z_min_max, display=display)
+    pcd0_filtered = filter_pcd(pcd0, x_min_max, y_min_max, z_min_max, display=display)
+    pcd1_filtered = filter_pcd(pcd1, x_min_max, y_min_max, z_min_max, display=display)
 
     # direct transformation calculated by RecFusion calibration pattern
     T = np.array([[0.618462, -0.428643,  0.658612,  -856.314/1000],
@@ -175,7 +177,7 @@ def pcd_integration_IQ_meshes():
     pass
 
 
-def filter_work_volume_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], display=False):
+def filter_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], display=False):
 
     points = np.asarray(pcd_in.points)
     ind = np.where((points[:, 0] > x_min_max[0]) & (points[:, 0] < x_min_max[1]) &
@@ -184,6 +186,14 @@ def filter_work_volume_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_m
 
     pcd_filtered = copy.deepcopy(pcd_in)
     pcd_filtered = pcd_filtered.select_by_index(ind)
+
+    # dist_mean = 0.0012  # = calc_points_mean_dist(points, n_neighbors=5)  # e.g. 0.0012
+    # radius = 15 * dist_mean
+    # cl, ind = pcd_filtered.remove_radius_outlier(nb_points=500, radius=radius)
+    # if display:
+    #     display_inlier_outlier(pcd_filtered, ind)
+
+    pcd_filtered = outlier_removal(pcd_filtered, dist_mean=0.0012, radius_factor=20, nb_points=1000, iterations=5, display=False)
 
     if display:
         # change color of pcd_in
@@ -197,27 +207,65 @@ def filter_work_volume_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_m
         opt = vis.get_render_option()
         opt.mesh_show_back_face = True
 
-        # vis.get_view_control().set_front([-0.038879764680673251, -0.014974666807244292, -0.99913168464041202])
-        # vis.get_view_control().set_lookat([0.099609375, -0.106201171875, 1.7450759559776579])
-        # vis.get_view_control().set_up([0.13100167754733352, -0.99133410197675953, 0.0097600582844658227])
-        # vis.get_view_control().set_zoom(0.382)
-
-        # update camera viewpoint, based on https://github.com/isl-org/Open3D/issues/1483#issuecomment-1423493280
-        # extrinsic = np.array([[1, 0, 0, -2],
-        #                       [0, -1, 0, -2],
-        #                       [0, 0, -1, -1],
-        #                       [0, 0, 0, 1], ])
-        # ctr = vis.get_view_control()
-        # # This line will obtain the default camera parameters .
-        # camera_params = ctr.convert_to_pinhole_camera_parameters()
-        # camera_params.extrinsic = extrinsic
-        # ctr.convert_from_pinhole_camera_parameters(camera_params, allow_arbitrary=True)
-        # # vis.update_renderer()
-
         vis.run()
         vis.destroy_window()
 
     return pcd_filtered
+
+
+def outlier_removal(pcd_in, dist_mean=0.0012, radius_factor=15, nb_points=500, iterations=3, display=False):
+
+    radius = radius_factor * dist_mean
+    pcd_filtered = copy.deepcopy(pcd_in)
+    ind_list = []
+    for n in range(iterations):
+        cl, ind = pcd_filtered.remove_radius_outlier(nb_points, radius)
+        ind_list.append(ind)  # FIXME: need to treat different number of points in each iteration
+        if display:
+            display_inlier_outlier(pcd_filtered, ind)
+        pcd_filtered = pcd_filtered.select_by_index(ind)
+
+    #
+    # ind_total = list(itertools.chain.from_iterable(ind_list))
+    #
+    # if display:
+    #     display_inlier_outlier(pcd_in, ind_total)
+
+    return pcd_filtered
+
+
+def display_inlier_outlier(cloud, ind):
+    """
+    source: https://www.open3d.org/docs/release/tutorial/geometry/pointcloud_outlier_removal.html#Select-down-sample
+    """
+    inlier_cloud = cloud.select_by_index(ind)
+    outlier_cloud = cloud.select_by_index(ind, invert=True)
+
+    outlier_cloud.paint_uniform_color([1, 0, 0])
+    # inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
+    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud],
+                                      # zoom=0.3412,
+                                      # front=[0.4257, -0.2125, -0.8795],
+                                      # lookat=[2.6172, 2.0475, 1.532],
+                                      # up=[-0.0694, -0.9768, 0.2024],
+                                      )
+    pass
+
+def calc_points_mean_dist(points, n_neighbors=5):
+
+    if isinstance(points, o3d.cpu.pybind.geometry.PointCloud):
+        points = np.asarray(points.points)
+
+    n_neighbors = min(n_neighbors, len(points))  # n_neighbors cannot be larger than number of points
+
+    # estimate average distance between points
+    nbrs_dist_mean = NearestNeighbors(n_neighbors=n_neighbors, algorithm='kd_tree').fit(points)
+    distances, indices = nbrs_dist_mean.kneighbors(points)
+    dist_mean = distances[:, 1:].mean()  # exclude first entry
+
+    return dist_mean
+
+
 
 
 """
