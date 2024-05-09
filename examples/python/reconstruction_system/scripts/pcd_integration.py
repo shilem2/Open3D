@@ -161,18 +161,46 @@ def pcd_integration_IQ_meshes():
 
     pcd0_filtered_T = copy.deepcopy(pcd0_filtered).transform(T)
 
+    pcd_combined = pcd0_filtered_T + pcd1_filtered
+
+    # save pointclouds
+    pcd_name_0 = Path(pcd0_file).parent / 'fragment_000_processed.ply'
+    pcd_name_1 = Path(pcd1_file).parent / 'fragment_000_processed.ply'
+    pcd_name_combined = Path(pcd0_file).parent / 'fragment_combied.ply'
+    o3d.io.write_point_cloud(pcd_name_0.as_posix(), pcd0_filtered_T, write_ascii=False, compressed=True)
+    o3d.io.write_point_cloud(pcd_name_1.as_posix(), pcd1_filtered, write_ascii=False, compressed=True)
+    o3d.io.write_point_cloud(pcd_name_combined.as_posix(), pcd_combined, write_ascii=False, compressed=True)
+
+
     # display
     vis = o3d.visualization.Visualizer()
-    vis.create_window(window_name='pcd 0', width=1600, height=1400)
+    vis.create_window(window_name='RecFusion Transformation', width=1600, height=1400)
 
-    vis.add_geometry(pcd0_filtered_T)
-    vis.add_geometry(pcd1_filtered)
+    # vis.add_geometry(pcd0_filtered_T)
+    # vis.add_geometry(pcd1_filtered)
+    vis.add_geometry(pcd_combied)
 
     opt = vis.get_render_option()
     opt.mesh_show_back_face = True
     vis.run()
     vis.destroy_window()
 
+
+
+
+    # ICP registration
+    transformation_icp, information_icp = pairwise_registration(source=pcd1_filtered, target=pcd0_filtered_T)
+
+    pcd1_T_icp = copy.deepcopy(pcd1_filtered).transform(transformation_icp)
+
+    o3d.visualization.draw_geometries([pcd0_filtered_T, pcd1_T_icp])
+
+
+    # convex hull
+    hull, _ = pcd_combined.compute_convex_hull()
+    hull_ls = o3d.geometry.LineSet.create_from_triangle_mesh(hull)
+    hull_ls.paint_uniform_color((1, 0, 0))
+    o3d.visualization.draw_geometries([pcd_combined, hull_ls])
 
     pass
 
@@ -338,9 +366,10 @@ def pcd_registration():
 
 def pairwise_registration(source, target):
     print("Apply point-to-plane ICP")
-    voxel_size = 1
-    max_correspondence_distance_coarse = voxel_size * 750
-    max_correspondence_distance_fine = voxel_size * 50
+    # FIXME: fix these parameters!
+    voxel_size = 0.01
+    max_correspondence_distance_coarse = voxel_size * 10
+    max_correspondence_distance_fine = voxel_size * 1
 
     source.estimate_normals()
     target.estimate_normals()
@@ -444,23 +473,26 @@ def icp_playground():
     https://www.open3d.org/docs/release/tutorial/pipelines/icp_registration.html#Point-to-plane-ICP
     """
 
-    pcd0_file = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec/00_points_0001.pcd'
-    pcd1_file = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec/01_points_0000.pcd'
+    # pcd0_file = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec/00_points_0001.pcd'
+    # pcd1_file = '/Users/shilem2/data/rgbd/work_volume_data/20240409_154854_with_IQ_rec/01_points_0000.pcd'
+    pcd0_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/fragments_single_camera/fragment_000_processed.ply'
+    pcd1_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/fragments_single_camera/fragment_000_processed.ply'
+
 
     pcd0 = o3d.io.read_point_cloud(pcd0_file)
     pcd1 = o3d.io.read_point_cloud(pcd1_file)
 
     # direct transformation saved in gitlab
     # https://code.medtronic.com/magic_sw_and_algorithm_team/services/camera-service/-/blob/master/config/f1150179.cal?ref_type=heads
-    T = np.array([[0.61494038,   -0.44619971,    0.65019547, -847.71289957],
-                  [0.45228962,    0.87499056,    0.17270096, -242.94946348],
-                  [-0.64597401,   0.18787587,    0.73987852,  344.81816623],
-                  [-0,        -0,        -0,         1],
-                  ])
+    # T = np.array([[0.61494038,   -0.44619971,    0.65019547, -847.71289957],
+    #               [0.45228962,    0.87499056,    0.17270096, -242.94946348],
+    #               [-0.64597401,   0.18787587,    0.73987852,  344.81816623],
+    #               [-0,        -0,        -0,         1],
+    #               ])
 
     # pcd1_T = copy.deepcopy(pcd1).transform(T)
 
-    voxel_size = 50
+    voxel_size = 0.01
 
     source = copy.deepcopy(pcd1).voxel_down_sample(voxel_size=voxel_size)
     target = copy.deepcopy(pcd0).voxel_down_sample(voxel_size=voxel_size)
