@@ -114,6 +114,52 @@ def pcd_integration():
 
     pass
 
+def pcd_integration_IQ_meshes():
+
+    pcd0_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/fragments_single_camera/fragment_000.ply'
+    pcd1_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/fragments_single_camera/fragment_000.ply'
+
+    pcd0 = o3d.io.read_point_cloud(pcd0_file)
+    pcd1 = o3d.io.read_point_cloud(pcd1_file)
+
+    # direct transformation calculated by RecFusion calibration pattern
+    T = np.array([[0.618462, -0.428643,  0.658612,  -856.314/1000],
+                  [0.428104,  0.886618,  0.175031,  -236.403/1000],
+                  [-0.658963, 0.173705,  0.731843,   350.537/1000],
+                  [-0,        -0,        -0,         1],
+                  ])
+
+    # direct transformation saved in gitlab
+    # https://code.medtronic.com/magic_sw_and_algorithm_team/services/camera-service/-/blob/master/config/f1150179.cal?ref_type=heads
+    # T = np.array([[0.61494038,   -0.44619971,    0.65019547, -847.71289957/1000],
+    #               [0.45228962,    0.87499056,    0.17270096, -242.94946348/1000],
+    #               [-0.64597401,   0.18787587,    0.73987852,  344.81816623/1000],
+    #               [-0,        -0,        -0,         1],
+    #               ])
+
+    T = np.linalg.inv(T)  # use inverse transformation
+
+
+    pcd0_T = copy.deepcopy(pcd0).transform(T)
+
+
+    # display
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name='pcd 0', width=1600, height=1400)
+
+    # vis.add_geometry(pcd0)
+    vis.add_geometry(pcd0_T)
+    vis.add_geometry(pcd1)
+
+    opt = vis.get_render_option()
+    opt.mesh_show_back_face = True
+    vis.run()
+    vis.destroy_window()
+
+
+    pass
+
+
 
 def pcd_registration():
 
@@ -525,9 +571,11 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
 if __name__ == '__main__':
 
     # pcd_integration()
+    pcd_integration_IQ_meshes()
     # pcd_registration()
     # run_reconstruction_system()
     # icp_playground()
-    align_rgb_depth_example()
+    # align_rgb_depth_example()
+
 
     pass

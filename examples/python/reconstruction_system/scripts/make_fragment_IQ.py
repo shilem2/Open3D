@@ -343,7 +343,7 @@ def main_two_cameras():
                   [-0.64597401,   0.18787587,    0.73987852,  344.81816623],
                   [-0,        -0,        -0,         1],
                   ])
-    # T = np.linalg.inv(T)  # use inverse transformation
+    T = np.linalg.inv(T)  # use inverse transformation
 
 
     print("making fragments from RGBD sequence.")
