@@ -227,7 +227,10 @@ def get_config(path_dataset_1,
                template_fragment_posegraph='fragment_%03d.json',
                template_fragment_posegraph_optimized='fragment_optimized_%03d.json',
                template_fragment_pointcloud='fragment_%03d.ply',
+               debug_mode=False,
+               icp_method='point_to_point',  # one of ['point_to_point', 'point_to_plane', 'color', 'generalized']
                ):
+
     print('Loading RealSense L515 Custom Dataset')
 
     # Get the dataset.
@@ -246,15 +249,16 @@ def get_config(path_dataset_1,
     config['preference_loop_closure_odometry'] = 0.1
     config['preference_loop_closure_registration'] = 5.0
     config['tsdf_cubic_size'] = 0.75
-    config['icp_method'] = "color"
     config['global_registration'] = "ransac"
     config['python_multi_threading'] = python_multi_threading
     config['n_keyframes_per_n_frame'] = n_keyframes_per_n_frame
     config['n_frames_per_fragment'] = 75
     config['convert_rgb_to_intensity'] = True
-    config["template_fragment_posegraph"] = (Path(output_root_dir) / template_fragment_posegraph).as_posix()
-    config["template_fragment_posegraph_optimized"] = (Path(output_root_dir) / template_fragment_posegraph_optimized).as_posix()
-    config["template_fragment_pointcloud"] = (Path(output_root_dir) / template_fragment_pointcloud).as_posix()
+    config['template_fragment_posegraph'] = (Path(output_root_dir) / template_fragment_posegraph).as_posix()
+    config['template_fragment_posegraph_optimized'] = (Path(output_root_dir) / template_fragment_posegraph_optimized).as_posix()
+    config['template_fragment_pointcloud'] = (Path(output_root_dir) / template_fragment_pointcloud).as_posix()
+    config['debug_mode'] = debug_mode
+    config['icp_method'] = icp_method
 
     # set all other config parameters
     initialize_config(config)
@@ -318,8 +322,7 @@ def main_two_cameras():
     depth_scale = 1 / 0.0002500000118743628
 
     output_root_dir = 'fragments_two_cameras'
-    config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
-                        output_root_dir=output_root_dir)
+    config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale, output_root_dir=output_root_dir)
 
 
     # direct transformation

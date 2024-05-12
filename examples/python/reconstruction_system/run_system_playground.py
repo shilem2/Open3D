@@ -34,8 +34,8 @@ def run_reconstruction_system():
     # config_json_file = 'config/realsense_l515.json'
     # default_dataset = 'lounge'
     # default_dataset = 'bedroom'
-    # default_dataset = 'jack_jack'
-    default_dataset = 'custom_realsense'
+    default_dataset = 'jack_jack'
+    # default_dataset = 'custom_realsense'
     debug_mode = False
     device = 'cpu:0'
     make = True  # make fragments

@@ -90,11 +90,8 @@ def integrate_rgb_frames_for_fragment(color_files, depth_files, fragment_id,
         color_type=o3d.pipelines.integration.TSDFVolumeColorType.RGB8)
     for i in range(len(pose_graph.nodes)):
         i_abs = fragment_id * config['n_frames_per_fragment'] + i
-        print(
-            "Fragment %03d / %03d :: integrate rgbd frame %d (%d of %d)." %
-            (fragment_id, n_fragments - 1, i_abs, i + 1, len(pose_graph.nodes)))
-        rgbd = read_rgbd_image(color_files[i_abs], depth_files[i_abs], False,
-                               config)
+        print("Fragment %03d / %03d :: integrate rgbd frame %d (%d of %d)." % (fragment_id, n_fragments - 1, i_abs, i + 1, len(pose_graph.nodes)))
+        rgbd = read_rgbd_image(color_files[i_abs], depth_files[i_abs], False, config)
         pose = pose_graph.nodes[i].pose
         volume.integrate(rgbd, intrinsic, np.linalg.inv(pose))
     mesh = volume.extract_triangle_mesh()
@@ -106,9 +103,7 @@ def make_pointcloud_for_fragment(path_dataset, color_files, depth_files,
                                  fragment_id, n_fragments, intrinsic, config):
     mesh = integrate_rgb_frames_for_fragment(
         color_files, depth_files, fragment_id, n_fragments,
-        join(path_dataset,
-             config["template_fragment_posegraph_optimized"] % fragment_id),
-        intrinsic, config)
+        join(path_dataset, config["template_fragment_posegraph_optimized"] % fragment_id), intrinsic, config)
     pcd = o3d.geometry.PointCloud()
     pcd.points = mesh.vertices
     pcd.colors = mesh.vertex_colors
