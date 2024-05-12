@@ -161,8 +161,8 @@ def make_posegraph_for_scene(ply_file_names, config, trans_init=np.identity(4)):
 
     else:
         for r in matching_results:
-            (matching_results[r].success, matching_results[r].transformation,
-             matching_results[r].information) = register_point_cloud_pair(ply_file_names, matching_results[r].s, matching_results[r].t, config, trans_init)
+            (matching_results[r].success, matching_results[r].transformation, matching_results[r].information) = \
+                register_point_cloud_pair(ply_file_names, matching_results[r].s, matching_results[r].t, config, trans_init)
 
     for r in matching_results:
         if matching_results[r].success:
@@ -185,7 +185,7 @@ def main():
 
     output_root_dir = 'fragments_registration'
 
-    icp_method = 'point_to_point'  # one of ['point_to_point', 'point_to_plane', 'color', 'generalized']
+    icp_method = 'color'  # one of ['point_to_point', 'point_to_plane', 'color', 'generalized']
 
     config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
                         output_root_dir=output_root_dir, icp_method=icp_method)

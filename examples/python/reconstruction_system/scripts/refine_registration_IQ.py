@@ -10,16 +10,21 @@
 import multiprocessing
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 import open3d as o3d
 
-pyexample_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+pyexample_path = Path(__file__).parents[2].as_posix()
 sys.path.append(pyexample_path)
-
+# from open3d_example import *
 from open3d_example import join, get_file_list, write_poses_to_log, draw_registration_result_original_color
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from make_fragment_IQ import get_config
+
+init_config_path = Path(__file__).parent.as_posix()
+sys.path.append(init_config_path)
 from optimize_posegraph import optimize_posegraph_for_refined_scene
 
 
@@ -28,21 +33,11 @@ def update_posegraph_for_scene(s, t, transformation, information, odometry,
     if t == s + 1:  # odometry case
         odometry = np.dot(transformation, odometry)
         odometry_inv = np.linalg.inv(odometry)
-        pose_graph.nodes.append(
-            o3d.pipelines.registration.PoseGraphNode(odometry_inv))
-        pose_graph.edges.append(
-            o3d.pipelines.registration.PoseGraphEdge(s,
-                                                     t,
-                                                     transformation,
-                                                     information,
-                                                     uncertain=False))
+        pose_graph.nodes.append(o3d.pipelines.registration.PoseGraphNode(odometry_inv))
+        pose_graph.edges.append(o3d.pipelines.registration.PoseGraphEdge(s, t, transformation, information, uncertain=False))
     else:  # loop closure case
-        pose_graph.edges.append(
-            o3d.pipelines.registration.PoseGraphEdge(s,
-                                                     t,
-                                                     transformation,
-                                                     information,
-                                                     uncertain=True))
+        pose_graph.edges.append(o3d.pipelines.registration.PoseGraphEdge(s, t, transformation, information, uncertain=True))
+
     return (odometry, pose_graph)
 
 
@@ -103,11 +98,10 @@ def multiscale_icp(source,
         current_transformation = result_icp.transformation
 
         if i == len(max_iter) - 1:
-            information_matrix = o3d.pipelines.registration.get_information_matrix_from_point_clouds(
-                source_down, target_down, voxel_size[scale] * 1.4,
-                result_icp.transformation)
+            information_matrix = o3d.pipelines.registration.get_information_matrix_from_point_clouds(source_down, target_down, voxel_size[scale] * 1.4, result_icp.transformation)
 
     if config["debug_mode"]:
+        # draw_registration_result_original_color(source, target, init_transformation)
         draw_registration_result_original_color(source, target, result_icp.transformation)
 
     return (result_icp.transformation, information_matrix)
@@ -124,17 +118,19 @@ def local_refinement(source, target, transformation_init, config):
     return (transformation, information)
 
 
-def register_point_cloud_pair(ply_file_names, s, t, transformation_init,
-                              config):
+def register_point_cloud_pair(ply_file_names, s, t, transformation_init, config):
+
     print("reading %s ..." % ply_file_names[s])
     source = o3d.io.read_point_cloud(ply_file_names[s])
     print("reading %s ..." % ply_file_names[t])
     target = o3d.io.read_point_cloud(ply_file_names[t])
-    (transformation, information) = \
-            local_refinement(source, target, transformation_init, config)
+
+    (transformation, information) = local_refinement(source, target, transformation_init, config)
+
     if config["debug_mode"]:
         print(transformation)
         print(information)
+
     return (transformation, information)
 
 
@@ -150,26 +146,22 @@ class matching_result:
 
 
 def make_posegraph_for_refined_scene(ply_file_names, config):
-    pose_graph = o3d.io.read_pose_graph(
-        join(config["path_dataset"],
-             config["template_global_posegraph_optimized"]))
+
+    pose_graph = o3d.io.read_pose_graph(join(config["path_dataset"], config["template_global_posegraph_optimized"]))
 
     n_files = len(ply_file_names)
     matching_results = {}
     for edge in pose_graph.edges:
         s = edge.source_node_id
         t = edge.target_node_id
-        matching_results[s * n_files + t] = \
-            matching_result(s, t, edge.transformation)
+        matching_results[s * n_files + t] = matching_result(s, t, edge.transformation)
 
     if config["python_multi_threading"] is True:
         os.environ['OMP_NUM_THREADS'] = '1'
-        max_workers = max(
-            1, min(multiprocessing.cpu_count() - 1, len(pose_graph.edges)))
+        max_workers = max(1, min(multiprocessing.cpu_count() - 1, len(pose_graph.edges)))
         mp_context = multiprocessing.get_context('spawn')
         with mp_context.Pool(processes=max_workers) as pool:
-            args = [(ply_file_names, v.s, v.t, v.transformation, config)
-                    for k, v in matching_results.items()]
+            args = [(ply_file_names, v.s, v.t, v.transformation, config) for k, v in matching_results.items()]
             results = pool.starmap(register_point_cloud_pair, args)
 
         for i, r in enumerate(matching_results):
@@ -177,25 +169,18 @@ def make_posegraph_for_refined_scene(ply_file_names, config):
             matching_results[r].information = results[i][1]
     else:
         for r in matching_results:
-            (matching_results[r].transformation,
-             matching_results[r].information) = \
-                register_point_cloud_pair(ply_file_names,
-                                          matching_results[r].s, matching_results[r].t,
-                                          matching_results[r].transformation, config)
+            (matching_results[r].transformation, matching_results[r].information) = \
+                register_point_cloud_pair(ply_file_names, matching_results[r].s, matching_results[r].t, matching_results[r].transformation, config)
 
     pose_graph_new = o3d.pipelines.registration.PoseGraph()
     odometry = np.identity(4)
-    pose_graph_new.nodes.append(
-        o3d.pipelines.registration.PoseGraphNode(odometry))
+    pose_graph_new.nodes.append(o3d.pipelines.registration.PoseGraphNode(odometry))
     for r in matching_results:
-        (odometry, pose_graph_new) = update_posegraph_for_scene(
-            matching_results[r].s, matching_results[r].t,
-            matching_results[r].transformation, matching_results[r].information,
-            odometry, pose_graph_new)
+        (odometry, pose_graph_new) = update_posegraph_for_scene(matching_results[r].s, matching_results[r].t,
+                                                                matching_results[r].transformation, matching_results[r].information,
+                                                                odometry, pose_graph_new)
     print(pose_graph_new)
-    o3d.io.write_pose_graph(
-        join(config["path_dataset"], config["template_refined_posegraph"]),
-        pose_graph_new)
+    o3d.io.write_pose_graph(join(config["path_dataset"], config["template_refined_posegraph"]), pose_graph_new)
 
 
 def run(config):
@@ -226,3 +211,67 @@ def run(config):
 
     traj_name = join(path_dataset, config["template_global_traj"])
     write_poses_to_log(traj_name, poses)
+
+    pass
+
+
+def main():
+
+    # left camera 00 f0350845
+    path_dataset_1 = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/'
+    path_intrinsic_1 = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/intrinsic_00_left.json'
+    # right camera 01 f1150179
+    path_dataset_2 = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/'
+    path_intrinsic_2 = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/intrinsic_01_right.json'
+
+    depth_scale = 1 / 0.0002500000118743628
+
+    output_root_dir = 'fragments_single_camera'
+
+    icp_method = 'color'  # one of ['point_to_point', 'point_to_plane', 'color', 'generalized']
+
+    template_fragment_posegraph_optimized = ''
+
+    config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
+                        output_root_dir=output_root_dir, icp_method=icp_method)
+
+
+
+    ply_file_names = ['/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/fragments_single_camera/fragment_000_processed.ply',
+                      '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/fragments_single_camera/fragment_000_processed.ply'
+                      ]
+
+    print("refine rough registration of fragments.")
+    o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+    # ply_file_names = get_file_list(join(config["path_dataset"], config["folder_fragment"]), ".ply")
+    make_posegraph_for_refined_scene(ply_file_names, config)
+    optimize_posegraph_for_refined_scene(config["path_dataset"], config)
+
+    path_dataset = config['path_dataset']
+    n_fragments = len(ply_file_names)
+
+    # Save to trajectory
+    poses = []
+    pose_graph_fragment = o3d.io.read_pose_graph(join(path_dataset, config["template_refined_posegraph_optimized"]))
+    for fragment_id in range(len(pose_graph_fragment.nodes)):
+
+        # FIXME: hardcoded, fix in in the future
+        path_dataset_pose_graph = config['path_dataset'] if fragment_id == 0 else config['path_dataset_2']
+        fragment_id_file = 0
+
+        pose_graph_rgbd = o3d.io.read_pose_graph(join(path_dataset_pose_graph, config["template_fragment_posegraph_optimized"] % fragment_id_file))
+        for frame_id in range(len(pose_graph_rgbd.nodes)):
+            frame_id_abs = fragment_id * config['n_frames_per_fragment'] + frame_id
+            pose = np.dot(pose_graph_fragment.nodes[fragment_id].pose, pose_graph_rgbd.nodes[frame_id].pose)
+            poses.append(pose)
+
+    traj_name = join(path_dataset, config["template_global_traj"])
+    write_poses_to_log(traj_name, poses)
+
+    pass
+
+if __name__ == '__main__':
+
+    main()
+
+    pass

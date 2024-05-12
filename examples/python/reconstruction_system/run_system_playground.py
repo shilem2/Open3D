@@ -38,8 +38,8 @@ def run_reconstruction_system():
     # default_dataset = 'custom_realsense'
     debug_mode = False
     device = 'cpu:0'
-    make = True  # make fragments
-    register = True  # register fragments
+    make = False  # make fragments
+    register = False  # register fragments
     refine = True  # refine registration
     integrate = True  # integrate scene
     slac = False  # [Optional] Use --slac and --slac_integrate flags to perform SLAC optimisation.
