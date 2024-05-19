@@ -155,7 +155,7 @@ def process_integrated_pcd():
 
 if __name__ == "__main__":
 
-    # main()
-    process_integrated_pcd()
+    main()
+    # process_integrated_pcd()
 
     pass

@@ -199,16 +199,16 @@ def main():
 
     # direct transformation saved in gitlab
     # https://code.medtronic.com/magic_sw_and_algorithm_team/services/camera-service/-/blob/master/config/f1150179.cal?ref_type=heads
-    # T = np.array([[0.61494038,   -0.44619971,    0.65019547, -847.71289957/1000],
-    #               [0.45228962,    0.87499056,    0.17270096, -242.94946348/1000],
-    #               [-0.64597401,   0.18787587,    0.73987852,  344.81816623/1000],
-    #               [-0,        -0,        -0,         1],
-    #               ])
+    T = np.array([[0.61494038,   -0.44619971,    0.65019547, -847.71289957/1000],
+                  [0.45228962,    0.87499056,    0.17270096, -242.94946348/1000],
+                  [-0.64597401,   0.18787587,    0.73987852,  344.81816623/1000],
+                  [-0,        -0,        -0,         1],
+                  ])
 
-    # T = np.linalg.inv(T)  # use inverse transformation
+    T = np.linalg.inv(T)  # use inverse transformation
 
-    # trans_init = T
-    trans_init = np.identity(4)
+    trans_init = T
+    # trans_init = np.identity(4)
 
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
     # ply_file_names = get_file_list(join(config["path_dataset"], config["folder_fragment"]), ".ply")
