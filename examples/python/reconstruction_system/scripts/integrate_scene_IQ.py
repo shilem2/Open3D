@@ -22,7 +22,8 @@ from make_fragment_IQ import get_config
 from pcd_integration import filter_pcd
 
 
-def scalable_integrate_rgb_frames(path_dataset, intrinsic_1, intrinsic_2, config):
+def scalable_integrate_rgb_frames(path_dataset, intrinsic_1, intrinsic_2, config,
+                                  x_min_max = [-0.5, 0.5], y_min_max = [-0.5, 0.5], z_min_max = [1., 1.8],):
 
     poses = []
     [color_files_1, depth_files_1] = get_rgbd_file_lists(config['path_dataset'])
@@ -68,6 +69,7 @@ def scalable_integrate_rgb_frames(path_dataset, intrinsic_1, intrinsic_2, config
             print("Fragment %03d / %03d :: integrate rgbd frame %d (%d of %d)." % (fragment_id, n_fragments - 1, frame_id_abs, frame_id + 1, len(pose_graph_rgbd.nodes)))
 
             rgbd = read_rgbd_image(color_files[frame_id_abs], depth_files[frame_id_abs], False, config)
+            rgbd = filter_rgbd_by_depth(rgbd, depth_min_max=z_min_max)
             pose = np.dot(pose_graph_fragment.nodes[fragment_id].pose, pose_graph_rgbd.nodes[frame_id].pose)
             volume.integrate(rgbd, intrinsic, np.linalg.inv(pose))
             poses.append(pose)
@@ -85,7 +87,22 @@ def scalable_integrate_rgb_frames(path_dataset, intrinsic_1, intrinsic_2, config
     traj_name = join(path_dataset, config["template_global_traj"])
     write_poses_to_log(traj_name, poses)
 
+    # save filtered mesh
+    mesh_filtered = filter_pcd(mesh, x_min_max, y_min_max, z_min_max, outlier_removal_flag=False, display=False)
+    mesh_filtered_file = (Path(mesh_name).parent / (Path(mesh_name).stem + '_filtered.ply')).as_posix()
+    o3d.io.write_triangle_mesh(mesh_filtered_file, mesh_filtered, write_ascii=False, compressed=False, write_vertex_normals=True, write_vertex_colors=True, write_triangle_uvs=True, print_progress=False)
+
+
     pass
+
+def filter_rgbd_by_depth(rgbd_image, depth_min_max=[1., 2.]):
+
+    d = np.asarray(rgbd_image.depth)
+    ind_filter = (d <= depth_min_max[0]) | (d >= depth_min_max[1])
+    d[ind_filter] = 0
+    rgbd_image.depth = o3d.geometry.Image(d)
+
+    return rgbd_image
 
 
 # def run(config):
@@ -111,6 +128,12 @@ def main():
 
     depth_scale = 1 / 0.0002500000118743628
 
+    x_min_max = [-0.5, 0.5]
+    y_min_max = [-0.5, 0.5]
+    z_min_max = [1., 2.]
+
+    depth_max = z_min_max[1]
+
     output_root_dir = 'fragments_single_camera'
 
     icp_method = 'color'  # one of ['point_to_point', 'point_to_plane', 'color', 'generalized']
@@ -118,12 +141,12 @@ def main():
     template_fragment_posegraph_optimized = ''
 
     config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
-                        output_root_dir=output_root_dir, icp_method=icp_method)
+                        output_root_dir=output_root_dir, icp_method=icp_method, depth_max=depth_max)
 
     intrinsic_1 = o3d.io.read_pinhole_camera_intrinsic(config["path_intrinsic"])
     intrinsic_2 = o3d.io.read_pinhole_camera_intrinsic(config["path_intrinsic_2"])
 
-    scalable_integrate_rgb_frames(config["path_dataset"], intrinsic_1, intrinsic_2, config)
+    scalable_integrate_rgb_frames(config["path_dataset"], intrinsic_1, intrinsic_2, config, x_min_max, y_min_max, z_min_max)
 
     pass
 
@@ -146,7 +169,7 @@ def process_integrated_mesh():
 
     x_min_max = [-0.5, 0.5]
     y_min_max = [-0.5, 0.5]
-    z_min_max = [1., 2.]
+    z_min_max = [1., 1.8]
 
     mesh_filtered = filter_pcd(mesh, x_min_max, y_min_max, z_min_max, outlier_removal_flag=False, display=display)
 
@@ -154,16 +177,15 @@ def process_integrated_mesh():
     mesh_filtered_file = (Path(mesh_file).parent / (Path(mesh_file).stem + '_filtered.ply')).as_posix()
     o3d.io.write_triangle_mesh(mesh_filtered_file, mesh_filtered, write_ascii=False, compressed=False, write_vertex_normals=True, write_vertex_colors=True, write_triangle_uvs=True, print_progress=False)
 
-
-    mesh_read = o3d.io.read_triangle_mesh(mesh_filtered_file)
-    o3d.visualization.draw_geometries([mesh_read])
+    # mesh_read = o3d.io.read_triangle_mesh(mesh_filtered_file)
+    # o3d.visualization.draw_geometries([mesh_read])
 
     pass
 
 
 if __name__ == "__main__":
 
-    # main()
-    process_integrated_mesh()
+    main()
+    # process_integrated_mesh()
 
     pass
