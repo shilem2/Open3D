@@ -158,16 +158,17 @@ def pcd_integration_IQ_meshes():
 
     T = np.linalg.inv(T)  # use inverse transformation
 
-
     pcd0_filtered_T = copy.deepcopy(pcd0_filtered).transform(T)
 
     pcd_combined = pcd0_filtered_T + pcd1_filtered
 
     # save pointclouds
     pcd_name_0 = Path(pcd0_file).parent / 'fragment_000_processed.ply'
+    pcd_name_0_T = Path(pcd0_file).parent / 'fragment_000_processed_transformed.ply'
     pcd_name_1 = Path(pcd1_file).parent / 'fragment_000_processed.ply'
     pcd_name_combined = Path(pcd0_file).parent / 'fragment_combined.ply'
-    o3d.io.write_point_cloud(pcd_name_0.as_posix(), pcd0_filtered_T, write_ascii=False, compressed=True)
+    o3d.io.write_point_cloud(pcd_name_0.as_posix(), pcd0_filtered, write_ascii=False, compressed=True)
+    o3d.io.write_point_cloud(pcd_name_0_T.as_posix(), pcd0_filtered_T, write_ascii=False, compressed=True)
     o3d.io.write_point_cloud(pcd_name_1.as_posix(), pcd1_filtered, write_ascii=False, compressed=True)
     o3d.io.write_point_cloud(pcd_name_combined.as_posix(), pcd_combined, write_ascii=False, compressed=True)
 
@@ -184,8 +185,6 @@ def pcd_integration_IQ_meshes():
     opt.mesh_show_back_face = True
     vis.run()
     vis.destroy_window()
-
-
 
 
     # ICP registration
@@ -209,9 +208,10 @@ def pcd_integration_IQ_meshes():
     pass
 
 
-def filter_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], display=False):
+def filter_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], outlier_removal_flag=True, display=False):
 
     points = np.asarray(pcd_in.points)
+    # filter by coordinate threshold
     ind = np.where((points[:, 0] > x_min_max[0]) & (points[:, 0] < x_min_max[1]) &
                    (points[:, 1] > y_min_max[0]) & (points[:, 1] < y_min_max[1]) &
                    (points[:, 2] > z_min_max[0]) & (points[:, 2] < z_min_max[1]))[0]
@@ -219,8 +219,10 @@ def filter_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 
     pcd_filtered = copy.deepcopy(pcd_in)
     pcd_filtered = pcd_filtered.select_by_index(ind)
 
-    dist_mean = 0.0012  # = calc_points_mean_dist(points, n_neighbors=5)  # e.g. 0.0012
-    pcd_filtered = outlier_removal(pcd_filtered, dist_mean=dist_mean, radius_factor=20, nb_points=1000, iterations=1, display=display)
+    #
+    if outlier_removal_flag:
+        dist_mean = 0.0012  # = calc_points_mean_dist(points, n_neighbors=5)  # e.g. 0.0012
+        pcd_filtered = outlier_removal(pcd_filtered, dist_mean=dist_mean, radius_factor=20, nb_points=1000, iterations=1, display=display)
 
     if display:
         # change color of pcd_in
@@ -751,10 +753,10 @@ def align_rgb_to_depth(rgb, intrinsics_rgb, depth, intrinsics_depth, depth_scale
 if __name__ == '__main__':
 
     # pcd_integration()
-    # pcd_integration_IQ_meshes()
+    pcd_integration_IQ_meshes()
     # pcd_registration()
     # run_reconstruction_system()
-    icp_playground()
+    # icp_playground()
     # align_rgb_depth_example()
 
 
