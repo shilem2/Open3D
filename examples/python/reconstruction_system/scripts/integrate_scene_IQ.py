@@ -128,34 +128,42 @@ def main():
     pass
 
 
-def process_integrated_pcd():
+def process_integrated_mesh():
 
-    pcd_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/scene/integrated.ply'
+    mesh_file = '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/scene/integrated.ply'
 
     display = True
 
-    pcd = o3d.io.read_point_cloud(pcd_file)
+    mesh = o3d.io.read_triangle_mesh(mesh_file)
 
-    p = np.array(pcd.points)
-    print(p[:, 0].min(), p[:, 0].max())
-    print(p[:, 1].min(), p[:, 1].max())
-    print(p[:, 2].min(), p[:, 2].max())
-    import pandas as pd
-    df = pd.DataFrame({'x': p[:, 0], 'y': p[:, 1], 'z': p[:, 2]})
-    print(df.describe(percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]).round(2))
+    # p = np.array(mesh.vertices)
+    # print(p[:, 0].min(), p[:, 0].max())
+    # print(p[:, 1].min(), p[:, 1].max())
+    # print(p[:, 2].min(), p[:, 2].max())
+    # import pandas as pd
+    # df = pd.DataFrame({'x': p[:, 0], 'y': p[:, 1], 'z': p[:, 2]})
+    # print(df.describe(percentiles=[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]).round(2))
 
     x_min_max = [-0.5, 0.5]
     y_min_max = [-0.5, 0.5]
     z_min_max = [1., 2.]
 
-    pcd_filtered = filter_pcd(pcd, x_min_max, y_min_max, z_min_max, outlier_removal_flag=False, display=display)
+    mesh_filtered = filter_pcd(mesh, x_min_max, y_min_max, z_min_max, outlier_removal_flag=False, display=display)
 
+    # save filtered mesh
+    mesh_filtered_file = (Path(mesh_file).parent / (Path(mesh_file).stem + '_filtered.ply')).as_posix()
+    o3d.io.write_triangle_mesh(mesh_filtered_file, mesh_filtered, write_ascii=False, compressed=False, write_vertex_normals=True, write_vertex_colors=True, write_triangle_uvs=True, print_progress=False)
+
+
+    mesh_read = o3d.io.read_triangle_mesh(mesh_filtered_file)
+    o3d.visualization.draw_geometries([mesh_read])
 
     pass
 
+
 if __name__ == "__main__":
 
-    main()
-    # process_integrated_pcd()
+    # main()
+    process_integrated_mesh()
 
     pass

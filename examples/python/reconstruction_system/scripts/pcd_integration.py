@@ -210,7 +210,10 @@ def pcd_integration_IQ_meshes():
 
 def filter_pcd(pcd_in, x_min_max=[-1., 1.], y_min_max=[-1., 1.], z_min_max=[0., 1.5], outlier_removal_flag=True, display=False):
 
-    points = np.asarray(pcd_in.points)
+    try:  # point cloud
+        points = np.asarray(pcd_in.points)
+    except:  # triangular mesh
+        points = np.asarray(pcd_in.vertices)
     # filter by coordinate threshold
     ind = np.where((points[:, 0] > x_min_max[0]) & (points[:, 0] < x_min_max[1]) &
                    (points[:, 1] > y_min_max[0]) & (points[:, 1] < y_min_max[1]) &
