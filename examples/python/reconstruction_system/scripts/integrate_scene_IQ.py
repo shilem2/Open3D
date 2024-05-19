@@ -79,7 +79,7 @@ def scalable_integrate_rgb_frames(path_dataset, intrinsic_1, intrinsic_2, config
     mesh = volume.extract_triangle_mesh()
     mesh.compute_vertex_normals()
     if config["debug_mode"]:
-        o3d.visualization.draw_geometries([mesh])
+        o3d.visualization.draw_geometries([mesh], mesh_show_back_face=True)
 
     mesh_name = join(path_dataset, config["template_global_mesh"])
     o3d.io.write_triangle_mesh(mesh_name, mesh, False, True)
@@ -178,7 +178,7 @@ def process_integrated_mesh():
     o3d.io.write_triangle_mesh(mesh_filtered_file, mesh_filtered, write_ascii=False, compressed=False, write_vertex_normals=True, write_vertex_colors=True, write_triangle_uvs=True, print_progress=False)
 
     # mesh_read = o3d.io.read_triangle_mesh(mesh_filtered_file)
-    # o3d.visualization.draw_geometries([mesh_read])
+    # o3d.visualization.draw_geometries([mesh_read], mesh_show_back_face=True)
 
     pass
 
