@@ -552,7 +552,6 @@ def icp_playground():
     pcd_name_combined_icp_p2l = Path(pcd0_file).parent / 'fragment_combined_icp_point_to_plane.ply'
     o3d.io.write_point_cloud(pcd_name_combined_icp_p2l.as_posix(), pcd_combined_icp_p2l, write_ascii=False, compressed=True)
 
-
     pass
 
 def draw_registration_result(source, target, transformation):

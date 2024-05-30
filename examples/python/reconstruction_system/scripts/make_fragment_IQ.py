@@ -18,8 +18,7 @@ from initialize_config import initialize_config
 from optimize_posegraph import optimize_posegraph_for_fragment
 
 
-def register_one_rgbd_pair(s, t, color_files, depth_files, intrinsic,
-                           with_opencv, config):
+def register_one_rgbd_pair(s, t, color_files, depth_files, intrinsic, with_opencv, config):
     convert_rgb_to_intensity = config['convert_rgb_to_intensity']
     source_rgbd_image = read_rgbd_image(color_files[s], depth_files[s], convert_rgb_to_intensity, config)
     target_rgbd_image = read_rgbd_image(color_files[t], depth_files[t], convert_rgb_to_intensity, config)

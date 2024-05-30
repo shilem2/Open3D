@@ -235,8 +235,6 @@ def main():
     config = get_config(path_dataset_1, path_intrinsic_1, path_dataset_2, path_intrinsic_2, depth_scale=depth_scale,
                         output_root_dir=output_root_dir, icp_method=icp_method)
 
-
-
     ply_file_names = ['/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175654_IQ_left/fragments_single_camera/fragment_000_processed.ply',
                       '/Users/shilem2/data/rgbd/realsense_records/aligned_to_color/20240506_IQ/20240506_175527_IQ_right/fragments_single_camera/fragment_000_processed.ply'
                       ]

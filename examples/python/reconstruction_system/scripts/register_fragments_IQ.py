@@ -22,14 +22,17 @@ from optimize_posegraph import optimize_posegraph_for_scene
 
 
 def preprocess_point_cloud(pcd, config):
+
     voxel_size = config["voxel_size"]
     pcd_down = pcd.voxel_down_sample(voxel_size)
     pcd_down.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size * 2.0, max_nn=30))
     pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(pcd_down, o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size * 5.0, max_nn=100))
+
     return (pcd_down, pcd_fpfh)
 
 
 def register_point_cloud_fpfh(source, target, source_fpfh, target_fpfh, config):
+
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
     distance_threshold = config["voxel_size"] * 1.4
 
@@ -81,6 +84,7 @@ def compute_initial_registration(s, t, source_down, target_down, source_fpfh, ta
     if config["debug_mode"]:
         # draw_registration_result(source_down, target_down, trans_init)
         draw_registration_result(source_down, target_down, transformation)
+
     return (True, transformation, information)
 
 
@@ -219,7 +223,6 @@ def main():
     make_clean_folder(join(config["path_dataset"], config["folder_scene"]))
     make_posegraph_for_scene(ply_file_names, config, trans_init)
     optimize_posegraph_for_scene(config["path_dataset"], config)
-
 
     pass
 
