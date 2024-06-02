@@ -71,7 +71,7 @@ def align_depth2color_example():
 
     output_root = 'C:/projects/rgbd/data/realsense_records/'
 
-    output_sfx = '_first_try'
+    output_sfx = ''
 
     date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(output_root) / f'aligned_to_{align_to_stream}' / (date_str + output_sfx)
